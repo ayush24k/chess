@@ -1,9 +1,11 @@
 import { WebSocket } from "ws";
+import { Chess } from 'chess.js';
+import { GAME_OVER, MOVE } from "./messages";
 
 export class Game {
     public player1: WebSocket;
     public player2: WebSocket;
-    private board: string;
+    private board: Chess;
     private moves: string[];
     private startTime: Date;
 
@@ -11,21 +13,61 @@ export class Game {
         this.player1 = player1;
         this.player2 = player2;
         this.moves = [];
-        this.board = "";
+        this.board = new Chess;
         this.startTime = new Date();
     }
 
-    public makeMove (socket: WebSocket, move: string) {
-        // check here
-        // add validation here (whhic player to move)
-        // which user move
-        // is the move valid
+    public makeMove(socket: WebSocket, move: {
+        from: string,
+        to: string
+    }) {
+        // validate the move using zod
 
-        //update the nboard
-        // push the move
+        // here moves lenght is even and player 2 is trying to make the move
+        if (this.board.moves.length % 2 === 0 && socket !== this.player1) {
+            return;
+        }
 
-        //check if the game is over
+        if (this.board.moves.length % 2 !== 0 && socket !== this.player2) {
+            return;
+        }
 
-        //send the updated board to both players
+        try {
+            this.board.move(move);
+        } catch (err) {
+            console.log("not your turn", err);
+        }
+
+
+        if (this.board.isGameOver()) {
+            // message to both users
+            this.player1.emit(JSON.stringify({
+                type: GAME_OVER,
+                payload: {
+                    winner: this.board.turn() === 'w' ? "black" : "white" 
+                }
+            }))
+
+            this.player2.emit(JSON.stringify({
+                type: GAME_OVER,
+                payload: {
+                    winner: this.board.turn() === 'w' ? "black" : "white" 
+                }
+            }))
+            return;
+        }
+
+        if (this.board.moves.length % 2 === 0) {
+            this.player1.emit(JSON.stringify({
+                type: MOVE,
+                payload: move
+            }))
+        } else {
+            this.player2.emit(JSON.stringify({
+                type: MOVE,
+                payload: move
+            }))
+        }
+
     }
 }
