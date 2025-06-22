@@ -16,6 +16,16 @@ export class Game {
     }
 
     public makeMove (socket: WebSocket, move: string) {
-        
+        // check here
+        // add validation here (whhic player to move)
+        // which user move
+        // is the move valid
+
+        //update the nboard
+        // push the move
+
+        //check if the game is over
+
+        //send the updated board to both players
     }
 }
