@@ -38,17 +38,18 @@ export class GameManager {
         }
     }
 
-    private handleMove(socket: WebSocket, message: {
+    private handleMove(socket: WebSocket, move: {
         from: string,
         to: string
     }) {
         // find the running game using player socket
+        console.log(move)
         const game = this.games.find((game) => {
             return game.player1 === socket || game.player2 === socket
         })
 
         if (game) {
-            game.makeMove(socket, message)
+            game.makeMove(socket, move)
         }
     }
 
@@ -62,7 +63,8 @@ export class GameManager {
             }
 
             if (message.type === MOVE) {
-                this.handleMove(socket, message.move)
+                console.log(message)
+                this.handleMove(socket, message.payload.move)
             }
         })
     }
