@@ -38,7 +38,10 @@ export class GameManager {
         }
     }
 
-    private handleMove(socket: WebSocket, message: string) {
+    private handleMove(socket: WebSocket, message: {
+        from: string,
+        to: string
+    }) {
         // find the running game using player socket
         const game = this.games.find((game) => {
             return game.player1 === socket || game.player2 === socket
@@ -51,13 +54,14 @@ export class GameManager {
 
     private addHandler(socket: WebSocket) {
         socket.on('message', (data) => {
+
             const message = JSON.parse(data.toString());
 
-            if (message === INIT_GAME) {
+            if (message.type === INIT_GAME) {
                 this.startGame(socket);
             }
 
-            if (message === MOVE) {
+            if (message.type === MOVE) {
                 this.handleMove(socket, message.move)
             }
         })
