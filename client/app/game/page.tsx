@@ -25,23 +25,26 @@ export default function GamePage() {
             console.log(message);
 
             switch (message.type) {
-                case INIT_GAME:
-                    setChess(new Chess());
+                case INIT_GAME: {
                     setBoard(chess.board());
                     console.log("Game initialised");
                     break;
-                case MOVE:
+                }
+                case MOVE: {
                     const move = message.payload;
                     chess.move(move);
                     setBoard(chess.board());
                     console.log("Move made");
                     break;
-                case GAME_OVER:
+                }
+                case GAME_OVER: {
+                    alert(message.payload.winner)
                     console.log("Game Over");
                     break;
+                }
             }
         }
-    }, [])
+    }, [socket])
 
     if (!socket) {
         return (

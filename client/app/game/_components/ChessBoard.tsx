@@ -21,7 +21,7 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
         <div className="text-neutral-900 p-2">
             {board.map((row, i) => {
                 return (
-                    <div key={i} className="flex">
+                    <div key={i} className="flex cursor-grab">
                         {row.map((square, j) => {
                             const squareRepresentation = String.fromCharCode(97 + (j % 8)) + "" + (8 - i) as Square;
                             return (
