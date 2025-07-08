@@ -4,11 +4,8 @@ import { useSocket } from "../hooks/useSocket";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
+import { GAME_OVER, INIT_GAME, MOVE } from "../messages";
 
-// moves
-export const INIT_GAME = "init_game";
-export const MOVE = "move";
-export const GAME_OVER = "game_over";
 
 export default function GamePage() {
     const socket = useSocket();
@@ -44,7 +41,7 @@ export default function GamePage() {
                 }
             }
         }
-    }, [socket])
+    }, [socket, chess])
 
     if (!socket) {
         return (

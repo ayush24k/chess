@@ -1,10 +1,10 @@
 'use client'
-import { Color, PieceSymbol, Square } from "chess.js";
+import { MOVE } from "@/app/messages";
+import { Chess, Color, PieceSymbol, Square } from "chess.js";
 import { useState } from "react";
-import { MOVE } from "../page";
 
 export default function ChessBoard({ board, socket, setBoard, chess }: {
-    chess: any;
+    chess: Chess;
     setBoard: any;
     board: ({
         square: Square;
