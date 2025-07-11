@@ -19,7 +19,7 @@ export default function Button({ children }: {
                 ease: 'easeInOut'
             }}
 
-            className="group relative bg-green-500 px-4 py-1 rounded-2xl items-center justify-center flex dark:text-neutral-900 text-md shadow-[0px_1px_4px_0px_rgba(255,255,255,0.1)_inset,0px_-1px_2px_0px_rgba(255,255,255,0.1)_inset]">
+            className="group relative inline-block bg-green-500 px-4 py-1 rounded-2xl dark:text-neutral-900 text-md shadow-[0px_1px_4px_0px_rgba(255,255,255,0.1)_inset,0px_-1px_2px_0px_rgba(255,255,255,0.1)_inset]">
             <button className="">
                 {children}
             </button>
