@@ -4,7 +4,7 @@ import Button from "../ui/Button";
 export default function HeroSection() {
     return (
         <section
-            className="relative min-h-screen overflow-hidden dark:bg-[#1A1A19] bg-neutral-200 rounded-b-4xl"
+            className="relative min-h-screen overflow-hidden dark:bg-black bg-neutral-200 rounded-b-4xl"
             style={{
                 backgroundImage: `radial-gradient(circle at 0.5px 0.5px, rgba(255,255,255,0.1) 0.9px, transparent 0)`,
                 backgroundSize: "8px 8px",
