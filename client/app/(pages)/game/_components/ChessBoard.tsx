@@ -1,5 +1,5 @@
 'use client'
-import { MOVE } from "@/app/messages";
+import { MOVE } from "@/app/messages/messages";
 import { Chess, Color, PieceSymbol, Square } from "chess.js";
 import { useState } from "react";
 

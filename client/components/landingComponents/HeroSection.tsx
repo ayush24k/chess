@@ -24,7 +24,7 @@ export default function HeroSection() {
                                 <Button className="my-8 px-8 py-3 bg-green-500 md:text-2xl text-lg font-semibold text-neutral-900 rounded-xl">
                                     <Link href={"/game"} >Start Game</Link>
                                 </Button>
-                                <Button className="my-8 px-8 py-3 md:text-2xl text-lg text-neutral-900 rounded-xl">
+                                <Button className="my-8 px-8 py-3 md:text-2xl text-lg text-neutral-900 rounded-xl flex justify-center items-center">
                                     <Link href={"https://github.com/ayush24k/chess"} target="_blank" className="flex items-center justify-center gap-2" >{<IconStarFilled className="h-4 w-4" />}{<IconBrandGithub />}</Link>
                                 </Button>
                             </div>

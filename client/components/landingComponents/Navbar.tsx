@@ -11,8 +11,12 @@ export default function Navbar() {
                 </div>
                 <div className="flex items-center gap-3">
                     <ThemeToggle />
-                    <Button>login</Button>
-                    <Button>sign up</Button>
+                    <Button>
+                        <Link href={'/signin'}>login</Link>
+                    </Button>
+                    <Button>
+                        <Link href={'/signin'}>sign up</Link>
+                    </Button>
                 </div>
             </nav>
         </div>

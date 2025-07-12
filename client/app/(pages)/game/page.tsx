@@ -1,10 +1,10 @@
 'use client'
 import { useEffect, useState } from "react";
-import { useSocket } from "../hooks/useSocket";
+import { useSocket } from "../../hooks/useSocket";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE } from "../messages";
+import { GAME_OVER, INIT_GAME, MOVE } from "../../messages/messages";
 
 
 export default function GamePage() {
