@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Button from "../ui/Button";
+import StartAnimation from "../animation/StartAnimation";
+import { IconBrandGithub, IconStarFilled } from "@tabler/icons-react";
 
 export default function HeroSection() {
     return (
@@ -11,23 +13,32 @@ export default function HeroSection() {
                 backgroundRepeat: 'repeat',
             }}
         >
-            <div className="relative max-w-6xl mx-auto py-42">
+            <div className="relative max-w-6xl mx-auto py-42 [overflow-anchor:none]">
                 <div className="relative flex justify-center items-center gap-5 flex-col z-5">
-                    <div className="flex justify-center items-center flex-col gap-3 text-center">
-                        <p className="px-4 text-[16px] font-medium py-1 rounded-4xl inline-flex bg-gradient-to-r from-red-400 to-yellow-600 dark:text-neutral-900 shadow-2xl">taking out your anger made easier 🥰</p>
-                        <h1 className="font-bold text-7xl max-w-5xl pt-3 tracking-tighter">Play Chess & Abuse Random People Online!</h1>
-                        <p className="mt-7 max-3xl text-[16px]">Play and take your anger out on people live in a 1v1 video chat chess lobby</p>
-                        <Link href={"/game"} className="my-8 px-8 py-2 bg-green-400 text-2xl font-semibold text-neutral-900 rounded-xl">Start Game</Link>
-                    </div>
-
-                    <div className="w-[1080px] h-[580px] bg-gray-500 rounded-lg border"></div>
+                    <StartAnimation>
+                        <div className="flex items-center flex-col gap-3 text-center px-4">
+                            <p className="px-4 md:text-[16px] text-[12px] font-medium py-1 rounded-4xl inline-flex bg-gradient-to-r from-red-400 to-yellow-600 dark:text-neutral-900 shadow-2xl">taking out your anger made easier 🥰</p>
+                            <h1 className="font-bold lg:text-7xl md:text-6xl text-5xl max-w-5xl pt-3 tracking-tighter">Play Chess & Abuse Random People Online!</h1>
+                            <p className="mt-4 md:max-w-3xl max-w-[300px] md:text-[16px] text-[14px]">Play and take your anger out on people live in a 1v1 video chat chess lobby</p>
+                            <div className="flex md:gap-8 gap-6">
+                                <Button className="my-8 px-8 py-3 bg-green-500 md:text-2xl text-lg font-semibold text-neutral-900 rounded-xl">
+                                    <Link href={"/game"} >Start Game</Link>
+                                </Button>
+                                <Button className="my-8 px-8 py-3 md:text-2xl text-lg text-neutral-900 rounded-xl">
+                                    <Link href={"https://github.com/ayush24k/chess"} target="_blank" className="flex items-center justify-center gap-2" >{<IconStarFilled className="h-4 w-4" />}{<IconBrandGithub />}</Link>
+                                </Button>
+                            </div>
+                        </div>
+                    </StartAnimation>
+                    {/* screen image  */}
+                    <div className="w-[90%] lg:h-[580px] md:h-[480px] sm:h-[380px] h-[280px] p-5 bg-gray-500 rounded-lg border"></div>
                 </div>
             </div>
             {/* bg gradient blue */}
             <div className="dark:block hidden">
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-400 rounded-full blur-[400px]"></div>
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-500 rounded-full blur-[100px] opacity-60"></div>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-400 rounded-full blur-[400px] md:opacity-100 opacity-50"></div>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-500 rounded-full blur-[100px] md:opacity-60 opacity-20"></div>
             </div>
-        </section>
+        </section >
     )
 }

@@ -1,25 +1,27 @@
 'use client'
+import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 
-export default function Button({ children }: {
+export default function Button({ children, className }: {
     children: React.ReactNode,
+    className?: string
 }) {
     return (
         <motion.div
             whileHover={{
                 scale: 1.05,
-                boxShadow: "0px 15px 80px rgba(255,255,255,0.2)",
+                boxShadow: "0px 15px 80px rgba(255,255,255, 0.3)",
             }}
             whileTap={{
                 scale: 0.9
             }}
 
             transition={{
-                duration: 0.2,
+                duration: 0.1,
                 ease: 'easeInOut'
             }}
 
-            className="group relative inline-block bg-green-500 px-4 py-1 rounded-2xl dark:text-neutral-900 text-md shadow-[0px_1px_4px_0px_rgba(255,255,255,0.1)_inset,0px_-1px_2px_0px_rgba(255,255,255,0.1)_inset]">
+            className={cn("group relative inline-block bg-green-500 px-4 py-1 rounded-2xl dark:text-neutral-900 text-md shadow-[0px_1px_4px_0px_rgba(255,255,255,0.1)_inset,0px_-1px_2px_0px_rgba(255,255,255,0.1)_inset]", className)}>
             <button className="">
                 {children}
             </button>
