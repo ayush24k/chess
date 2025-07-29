@@ -18,7 +18,7 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
 
 
     return (
-        <div className="text-neutral-900 p-2">
+        <div className="text-neutral-900 p-4">
             {board.map((row, i) => {
                 return (
                     <div key={i} className="flex cursor-grab">
@@ -27,7 +27,7 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
                             return (
                                 <div
                                     key={j}
-                                    className={`w-14 h-14 flex justify-center items-center ${(i + j) % 2 === 0 ? `bg-green-600` : `bg-green-300`}`}
+                                    className={`w-18 h-18 flex justify-center items-center ${(i + j) % 2 === 0 ? `bg-green-600` : `bg-green-300`}`}
                                     onClick={() => {
                                         if (!from) {
                                             setfrom(squareRepresentation)
@@ -56,7 +56,8 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
                                         }
                                     }}
                                 >
-                                    {square ? square.type : ""}
+                                    {/* {square ? square.type : ""} */}
+                                    {square ? <img className="w-12" src={`/chessPieces/${square.color === 'b' ? `${square.type}.png` : `${square.type.toUpperCase()}-white.png`}`} /> : null}
                                 </div>
                             )
                         })}

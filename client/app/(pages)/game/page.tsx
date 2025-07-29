@@ -59,7 +59,7 @@ export default function GamePage() {
     }
 
     return (
-        <section className="flex justify-center py-24 bg-neutral-900 ">
+        <section className="flex justify-center  items-center py-24 bg-neutral-900 min-h-screen ">
             <div className="container realtive max-w-5xl">
                 <div className="grid grid-cols-6 gap-5">
                     <div className="col-span-4 bg-neutral-800 flex justify-center items-center">
