@@ -7,7 +7,7 @@ import { pages } from "next/dist/build/templates/app-page";
 export const nextAuthConfig = {
     providers: [
         CredentialsProvider({
-            name: "Email",
+            name: "Credentials",
             credentials: {
                 username: { label: "email", type: "text", placeholder: "email" },
                 password: { label: "password", type: "password", placeholder: "password" },
