@@ -15,7 +15,7 @@ export default function Navbar() {
                         <Link href={'/signin'}>login</Link>
                     </Button>
                     <Button>
-                        <Link href={'/signin'}>sign up</Link>
+                        <Link href={'/signup'}>sign up</Link>
                     </Button>
                 </div>
             </nav>
