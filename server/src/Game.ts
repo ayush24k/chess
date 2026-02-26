@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import { Chess } from 'chess.js';
-import { GAME_OVER, INIT_GAME, MOVE } from "./messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT } from "./messages";
 
 export class Game {
     public player1: WebSocket;
@@ -88,5 +88,20 @@ export class Game {
             }))
         }
         this.moveCount++;
+    }
+
+    public handleChat(socket: WebSocket, message: string) {
+        // Relay the chat message to the opponent
+        if (socket === this.player1) {
+            this.player2.send(JSON.stringify({
+                type: CHAT,
+                payload: { message }
+            }));
+        } else if (socket === this.player2) {
+            this.player1.send(JSON.stringify({
+                type: CHAT,
+                payload: { message }
+            }));
+        }
     }
 }
