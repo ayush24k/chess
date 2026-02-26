@@ -1,10 +1,10 @@
 'use client'
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSocket } from "../../hooks/useSocket";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE, CHAT } from "../../messages/messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser } from "@tabler/icons-react";
 
 export default function GamePage() {
@@ -19,10 +19,51 @@ export default function GamePage() {
     const [chatInput, setChatInput] = useState("");
     const [playerColor, setPlayerColor] = useState<string | null>(null);
 
+    const localVideoRef = useRef<HTMLVideoElement>(null);
+    const remoteVideoRef = useRef<HTMLVideoElement>(null);
+    const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+
     useEffect(() => {
         if (!socket) {
             return;
         }
+
+        const initializeWebRTC = async (color: string) => {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+            });
+            peerConnectionRef.current = pc;
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate && socket) {
+                    socket.send(JSON.stringify({ type: WEBRTC_ICE, payload: event.candidate }));
+                }
+            };
+
+            pc.ontrack = (event) => {
+                if (remoteVideoRef.current) {
+                    remoteVideoRef.current.srcObject = event.streams[0];
+                }
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                }
+                stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+            } catch (err) {
+                console.error("Error accessing media devices.", err);
+            }
+
+            if (color === 'white') {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                if (socket) {
+                    socket.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
+                }
+            }
+        };
 
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
@@ -36,6 +77,7 @@ export default function GamePage() {
                     setIsPlaying(true);
                     setPlayerColor(message.payload.color);
                     console.log("Game initialised");
+                    initializeWebRTC(message.payload.color);
                     break;
                 }
                 case MOVE: {
@@ -54,6 +96,32 @@ export default function GamePage() {
                 }
                 case CHAT: {
                     setChatMessages(prev => [...prev, { sender: "opponent", text: message.payload.message }]);
+                    break;
+                }
+                case WEBRTC_OFFER: {
+                    const handleOffer = async () => {
+                        const pc = peerConnectionRef.current;
+                        if (!pc) return;
+                        await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        socket.send(JSON.stringify({ type: WEBRTC_ANSWER, payload: answer }));
+                    };
+                    handleOffer();
+                    break;
+                }
+                case WEBRTC_ANSWER: {
+                    const pc = peerConnectionRef.current;
+                    if (pc) {
+                        pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                    }
+                    break;
+                }
+                case WEBRTC_ICE: {
+                    const pc = peerConnectionRef.current;
+                    if (pc && message.payload) {
+                        pc.addIceCandidate(new RTCIceCandidate(message.payload));
+                    }
                     break;
                 }
             }
@@ -115,11 +183,14 @@ export default function GamePage() {
 
                         {/* Opponent Webcam */}
                         <div className="w-full aspect-video bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center relative shadow-xl overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-50 text-white/10 group-hover:opacity-80 transition-opacity"></div>
-                            <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
-                                <IconVideo className="w-8 h-8 opacity-50" />
-                                <span>Opponent Camera</span>
-                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-50 text-white/10 group-hover:opacity-80 transition-opacity z-0"></div>
+                            {!isPlaying && (
+                                <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
+                                    <IconVideo className="w-8 h-8 opacity-50" />
+                                    <span>Opponent Camera</span>
+                                </div>
+                            )}
+                            <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10" />
                         </div>
 
                         {/* Game History Log */}
@@ -146,11 +217,14 @@ export default function GamePage() {
 
                         {/* User Webcam */}
                         <div className="w-full aspect-video bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center relative shadow-xl overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-50 group-hover:opacity-80 transition-opacity"></div>
-                            <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
-                                <IconVideo className="w-8 h-8 opacity-50" />
-                                <span>Your Camera</span>
-                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-50 group-hover:opacity-80 transition-opacity z-0"></div>
+                            {!isPlaying && (
+                                <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
+                                    <IconVideo className="w-8 h-8 opacity-50" />
+                                    <span>Your Camera</span>
+                                </div>
+                            )}
+                            <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-10 scale-x-[-1]" />
                         </div>
 
                     </div>

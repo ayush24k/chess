@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { INIT_GAME, MOVE, CHAT } from "./messages";
+import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "./messages";
 import { Game } from "./Game";
 
 export class GameManager {
@@ -71,6 +71,13 @@ export class GameManager {
                 const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
                 if (game) {
                     game.handleChat(socket, message.payload.message);
+                }
+            }
+
+            if (message.type === WEBRTC_ICE || message.type === WEBRTC_OFFER || message.type === WEBRTC_ANSWER) {
+                const game = this.games.find((game) => game.player1 === socket || game.player2 === socket);
+                if (game) {
+                    game.handleWebRTC(socket, message.type, message.payload);
                 }
             }
         })
