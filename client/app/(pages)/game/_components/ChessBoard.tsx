@@ -3,7 +3,7 @@ import { MOVE } from "@/app/messages/messages";
 import { Chess, Color, PieceSymbol, Square } from "chess.js";
 import { useState } from "react";
 
-export default function ChessBoard({ board, socket, setBoard, chess }: {
+export default function ChessBoard({ board, socket, setBoard, chess, playerColor }: {
     chess: Chess;
     setBoard: any;
     board: ({
@@ -12,6 +12,7 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
         color: Color;
     } | null)[][];
     socket: WebSocket;
+    playerColor: string | null;
 }) {
 
     const [from, setfrom] = useState<null | Square>(null);
@@ -19,10 +20,10 @@ export default function ChessBoard({ board, socket, setBoard, chess }: {
 
     return (
         <div className="text-neutral-900 p-4">
-            {board.map((row, i) => {
+            {board.map((_, _i) => { const i = playerColor === "black" ? 7 - _i : _i; const row = board[i];
                 return (
                     <div key={i} className="flex cursor-grab">
-                        {row.map((square, j) => {
+                        {row.map((_, _j) => { const j = playerColor === "black" ? 7 - _j : _j; const square = row[j];
                             const squareRepresentation = String.fromCharCode(97 + (j % 8)) + "" + (8 - i) as Square;
                             return (
                                 <div

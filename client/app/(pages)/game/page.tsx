@@ -12,10 +12,12 @@ export default function GamePage() {
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [status, setStatus] = useState("");
+    const [showStatus, setShowStatus] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ sender: string, text: string }[]>([]);
     const [chatInput, setChatInput] = useState("");
+    const [playerColor, setPlayerColor] = useState<string | null>(null);
 
     useEffect(() => {
         if (!socket) {
@@ -32,6 +34,7 @@ export default function GamePage() {
                     setStatus("Match started! Opponent connected.");
                     setIsSearching(false);
                     setIsPlaying(true);
+                    setPlayerColor(message.payload.color);
                     console.log("Game initialised");
                     break;
                 }
@@ -56,6 +59,16 @@ export default function GamePage() {
             }
         }
     }, [socket, chess])
+
+    useEffect(() => {
+        if (status) {
+            setShowStatus(true);
+            const timer = setTimeout(() => {
+                setShowStatus(false);
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [status]);
 
     if (!socket) {
         return (
@@ -146,11 +159,9 @@ export default function GamePage() {
                     <div className="lg:col-span-6 bg-neutral-900/60 backdrop-blur-md rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center p-4 relative overflow-hidden h-full">
 
                         {/* Status Bar */}
-                        {status && (
-                            <div className="w-full bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 p-2 md:p-3 absolute top-3 md:top-4 max-w-md mx-auto z-20 text-center shadow-lg">
-                                <span className="font-medium text-sm text-white/90">{status}</span>
-                            </div>
-                        )}
+                        <div className={`w-full bg-black/60 backdrop-blur-md rounded-xl border border-white/20 p-2 md:p-3 absolute top-3 md:top-4 max-w-md left-0 right-0 mx-auto z-20 text-center shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-all duration-500 ease-in-out transform ${showStatus ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-8 pointer-events-none'}`}>
+                            <span className="font-bold text-sm tracking-wide text-green-400 drop-shadow-md">{status}</span>
+                        </div>
 
                         {/* Glowing backdrop elements inside the board container */}
                         <div className="absolute top-1/4 left-1/4 -translate-x-1/2 w-[300px] h-[300px] bg-green-500 rounded-full blur-[200px] opacity-20 pointer-events-none"></div>
@@ -175,7 +186,7 @@ export default function GamePage() {
 
                             {/* The Board */}
                             <div className="w-full flex items-center justify-center">
-                                <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} />
+                                <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} />
                             </div>
 
                             {/* Your Info (Bottom) */}
