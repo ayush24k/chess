@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Navbar from "@/components/landingComponents/Navbar";
+import { IconBrandGithub, IconBrandGoogle } from "@tabler/icons-react";
 
 export default function SignIn() {
     return (
@@ -48,6 +49,23 @@ export default function SignIn() {
                         <Button className="w-full mt-2 py-3 rounded-xl text-center flex justify-center text-lg font-semibold">
                             Sign In
                         </Button>
+
+                        <div className="flex items-center gap-4 mt-2">
+                            <div className="h-[1px] flex-1 bg-neutral-300 dark:bg-neutral-700"></div>
+                            <span className="text-xs text-neutral-500 uppercase font-medium">Or continue with</span>
+                            <div className="h-[1px] flex-1 bg-neutral-300 dark:bg-neutral-700"></div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button type="button" className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:bg-white/50 dark:hover:bg-black/50 transition-all text-sm font-medium">
+                                <IconBrandGoogle className="w-5 h-5" />
+                                Google
+                            </button>
+                            <button type="button" className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:bg-white/50 dark:hover:bg-black/50 transition-all text-sm font-medium">
+                                <IconBrandGithub className="w-5 h-5" />
+                                GitHub
+                            </button>
+                        </div>
                     </form>
 
                     <div className="mt-8 text-sm dark:text-neutral-400 text-neutral-600">

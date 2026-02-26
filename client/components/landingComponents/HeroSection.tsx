@@ -2,11 +2,12 @@ import Link from "next/link";
 import Button from "../ui/Button";
 import StartAnimation from "../animation/StartAnimation";
 import { IconBrandGithub, IconStarFilled } from "@tabler/icons-react";
+import Footer from "./Footer";
 
 export default function HeroSection() {
     return (
         <section
-            className="relative min-h-screen overflow-hidden dark:bg-black bg-neutral-200 rounded-b-4xl"
+            className="relative min-h-screen overflow-hidden dark:bg-black bg-neutral-200"
             style={{
                 backgroundImage: `radial-gradient(circle at 0.5px 0.5px, rgba(255,255,255,0.1) 0.9px, transparent 0)`,
                 backgroundSize: "8px 8px",
@@ -39,6 +40,8 @@ export default function HeroSection() {
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-400 rounded-full blur-[400px] md:opacity-100 opacity-50"></div>
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-500 rounded-full blur-[100px] md:opacity-60 opacity-20"></div>
             </div>
+
+            <Footer />
         </section >
     )
 }
