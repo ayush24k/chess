@@ -3,6 +3,7 @@ import Button from "../ui/Button";
 import StartAnimation from "../animation/StartAnimation";
 import { IconBrandGithub, IconStarFilled, IconChess, IconVideo, IconMessage } from "@tabler/icons-react";
 import PlayersOnline from "./PlayersOnline";
+import HeroChessBoard from "./HeroChessBoard";
 
 export default function HeroSection() {
     return (
@@ -59,7 +60,7 @@ export default function HeroSection() {
 
                     {/* Hero visual — board mockup */}
                     <div className="relative w-[90%] max-w-4xl">
-                        <div className="lg:h-[520px] md:h-[420px] sm:h-[340px] h-[240px] rounded-2xl border dark:border-white/10 border-black/10 dark:bg-neutral-900/60 bg-white/60 backdrop-blur-sm overflow-hidden shadow-2xl grid grid-cols-3 gap-0">
+                        <div className="lg:h-[520px] md:h-[420px] sm:h-[340px] h-auto rounded-2xl border dark:border-white/10 border-black/10 dark:bg-neutral-900/60 bg-white/60 backdrop-blur-sm overflow-hidden shadow-2xl grid grid-cols-3 gap-0">
                             {/* Left panel mock */}
                             <div className="hidden md:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-r dark:border-white/5 border-black/5">
                                 <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
@@ -68,19 +69,7 @@ export default function HeroSection() {
                             </div>
                             {/* Center board mock */}
                             <div className="col-span-3 md:col-span-1 flex items-center justify-center p-4">
-                                <div className="w-full aspect-square max-w-[280px] grid grid-cols-8 grid-rows-8 rounded-lg overflow-hidden shadow-lg">
-                                    {Array.from({ length: 64 }).map((_, i) => {
-                                        const row = Math.floor(i / 8);
-                                        const col = i % 8;
-                                        const isLight = (row + col) % 2 === 0;
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={isLight ? "bg-amber-100 dark:bg-amber-200" : "bg-green-700 dark:bg-green-800"}
-                                            />
-                                        );
-                                    })}
-                                </div>
+                                <HeroChessBoard />
                             </div>
                             {/* Right panel mock */}
                             <div className="hidden md:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-l dark:border-white/5 border-black/5">
