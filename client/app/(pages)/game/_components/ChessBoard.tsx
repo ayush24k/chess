@@ -4,7 +4,7 @@ import { Chess, Color, PieceSymbol, Square } from "chess.js";
 import { useState } from "react";
 import Image from "next/image";
 
-export default function ChessBoard({ board, socket, setBoard, chess, playerColor }: {
+export default function ChessBoard({ board, socket, setBoard, chess, playerColor, onMove }: {
     chess: Chess;
     setBoard: any;
     board: ({
@@ -14,6 +14,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
     } | null)[][];
     socket: WebSocket;
     playerColor: string | null;
+    onMove?: () => void;
 }) {
 
     const [from, setfrom] = useState<null | Square>(null);
@@ -51,6 +52,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                                                 to: squareRepresentation
                                             });
                                             setBoard(chess.board());
+                                            onMove?.();
 
 
                                             console.log({

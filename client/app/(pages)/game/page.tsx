@@ -20,6 +20,7 @@ export default function GamePage() {
     const [playerColor, setPlayerColor] = useState<string | null>(null);
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+    const [moveHistory, setMoveHistory] = useState<string[]>([]);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -74,6 +75,7 @@ export default function GamePage() {
             switch (message.type) {
                 case INIT_GAME: {
                     setBoard(chess.board());
+                    setMoveHistory([]);
                     setStatus("Match started! Opponent connected.");
                     setIsSearching(false);
                     setIsPlaying(true);
@@ -86,6 +88,7 @@ export default function GamePage() {
                     const move = message.payload;
                     chess.move(move);
                     setBoard(chess.board());
+                    setMoveHistory(chess.history());
                     console.log("Move made");
                     break;
                 }
@@ -157,6 +160,12 @@ export default function GamePage() {
         setStatus("Searching for an opponent...");
     }
 
+    // Pair moves into rows: [["e4","e5"], ["Nf3","Nc6"], ...]
+    const movePairs: [string, string | undefined][] = [];
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        movePairs.push([moveHistory[i], moveHistory[i + 1]]);
+    }
+
     function handleSendMessage() {
         if (!socket || !chatInput.trim() || !isPlaying) return;
 
@@ -212,13 +221,31 @@ export default function GamePage() {
                 <div className="game-history bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex-col shadow-xl overflow-hidden">
                     <div className="flex p-4 border-b border-white/10 font-medium text-white/90 bg-white/5 justify-between items-center">
                         <span>Game History</span>
+                        <span className="text-xs text-neutral-500">{moveHistory.length} moves</span>
                     </div>
-                    <div className="flex-1 p-4 overflow-y-auto">
-                        <div className="flex flex-col gap-2 text-sm text-neutral-400">
-                            <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-sm">
-                                <span>Waiting for moves...</span>
+                    <div className="flex-1 p-4 overflow-y-auto min-h-0">
+                        {movePairs.length === 0 ? (
+                            <div className="flex flex-col gap-2 text-sm text-neutral-400">
+                                <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-sm">
+                                    <span>Waiting for moves...</span>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="flex flex-col gap-1">
+                                {movePairs.map(([white, black], idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${
+                                            idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'bg-white/5' : ''
+                                        }`}
+                                    >
+                                        <span className="w-6 text-neutral-600 font-mono text-xs">{idx + 1}.</span>
+                                        <span className="flex-1 text-white/90 font-medium font-mono">{white}</span>
+                                        <span className="flex-1 text-white/70 font-mono">{black ?? '...'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -269,7 +296,7 @@ export default function GamePage() {
 
                         {/* The Board */}
                         <div className="w-full flex items-center justify-center">
-                            <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} />
+                            <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => setMoveHistory(chess.history())} />
                         </div>
 
                         {/* Your Info */}
@@ -424,16 +451,36 @@ export default function GamePage() {
                 <div className="bottom-sheet-panel h-[45dvh] bg-neutral-900 border-t border-white/10 rounded-t-2xl flex flex-col">
                     <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5 rounded-t-2xl">
                         <span className="font-medium text-white/90 text-sm">Game History</span>
-                        <button onClick={() => setMobileHistoryOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-                            <IconX className="w-5 h-5 text-neutral-400" />
-                        </button>
-                    </div>
-                    <div className="flex-1 p-3 overflow-y-auto">
-                        <div className="flex flex-col gap-2 text-sm text-neutral-400">
-                            <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-xs">
-                                <span>Waiting for moves...</span>
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-neutral-500">{moveHistory.length} moves</span>
+                            <button onClick={() => setMobileHistoryOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                                <IconX className="w-5 h-5 text-neutral-400" />
+                            </button>
                         </div>
+                    </div>
+                    <div className="flex-1 p-3 overflow-y-auto min-h-0">
+                        {movePairs.length === 0 ? (
+                            <div className="flex flex-col gap-2 text-sm text-neutral-400">
+                                <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-xs">
+                                    <span>Waiting for moves...</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1">
+                                {movePairs.map(([white, black], idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${
+                                            idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'bg-white/5' : ''
+                                        }`}
+                                    >
+                                        <span className="w-6 text-neutral-600 font-mono text-xs">{idx + 1}.</span>
+                                        <span className="flex-1 text-white/90 font-medium font-mono">{white}</span>
+                                        <span className="flex-1 text-white/70 font-mono">{black ?? '...'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
