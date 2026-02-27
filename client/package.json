@@ -14,7 +14,7 @@
     "chess.js": "^1.4.0",
     "clsx": "^2.1.1",
     "motion": "^12.23.3",
-    "next": "15.3.5",
+    "next": "^16.1.6",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -27,7 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.3.5",
+    "eslint-config-next": "^16.1.6",
     "prisma": "^6.12.0",
     "tailwindcss": "^4",
     "typescript": "^5"

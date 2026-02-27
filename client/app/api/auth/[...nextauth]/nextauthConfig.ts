@@ -2,7 +2,6 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
 import { signIn } from "next-auth/react";
-import { pages } from "next/dist/build/templates/app-page";
 
 export const nextAuthConfig = {
     providers: [
@@ -37,7 +36,7 @@ export const nextAuthConfig = {
 
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
-        async signIn({user}: any) {
+        async signIn({ user }: any) {
 
             // validate and store the user in db if new entry
             console.log(user)
