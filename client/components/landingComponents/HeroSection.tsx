@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Button from "../ui/Button";
 import StartAnimation from "../animation/StartAnimation";
-import { IconBrandGithub, IconStarFilled, IconChess, IconVideo, IconMessage } from "@tabler/icons-react";
+import { IconBrandGithub, IconStarFilled, IconChess, IconVideo, IconMessage, IconUser, IconSend, IconClock, IconMessageCircle } from "@tabler/icons-react";
 import PlayersOnline from "./PlayersOnline";
 import HeroChessBoard from "./HeroChessBoard";
 
@@ -61,21 +61,95 @@ export default function HeroSection() {
                     {/* Hero visual — board mockup */}
                     <div className="relative w-[90%] max-w-4xl">
                         <div className="lg:h-[520px] md:h-[420px] sm:h-[340px] h-auto rounded-2xl border dark:border-white/10 border-black/10 dark:bg-neutral-900/60 bg-white/60 backdrop-blur-sm overflow-hidden shadow-2xl grid grid-cols-3 gap-0">
-                            {/* Left panel mock */}
+                            {/* Left panel — Video & Player info */}
                             <div className="hidden md:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-r dark:border-white/5 border-black/5">
-                                <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
-                                <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
-                                <div className="flex-1 rounded-lg dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
+                                {/* Opponent video */}
+                                <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 relative overflow-hidden">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                                        <IconUser className="w-8 h-8 dark:text-neutral-600 text-neutral-400" />
+                                        <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">Opponent</span>
+                                    </div>
+                                    <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md dark:bg-black/60 bg-white/70 text-[9px] font-semibold dark:text-red-400 text-red-500">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                        LIVE
+                                    </div>
+                                </div>
+                                {/* Your video */}
+                                <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 relative overflow-hidden">
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                                        <IconVideo className="w-8 h-8 dark:text-neutral-600 text-neutral-400" />
+                                        <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">You</span>
+                                    </div>
+                                </div>
+                                {/* Player info bar */}
+                                <div className="flex-1 rounded-lg dark:bg-neutral-800/60 bg-neutral-200/60 p-2.5 flex flex-col justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                                            <IconUser className="w-3.5 h-3.5 text-green-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-semibold dark:text-neutral-300 text-neutral-600">Player_1284</p>
+                                            <p className="text-[8px] dark:text-neutral-500 text-neutral-400">Rating: 1520</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                            <IconUser className="w-3.5 h-3.5 text-emerald-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-semibold dark:text-neutral-300 text-neutral-600">ChessKing99</p>
+                                            <p className="text-[8px] dark:text-neutral-500 text-neutral-400">Rating: 1485</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             {/* Center board mock */}
                             <div className="col-span-3 md:col-span-1 flex items-center justify-center p-4">
                                 <HeroChessBoard />
                             </div>
-                            {/* Right panel mock */}
+                            {/* Right panel — Chat & Move history */}
                             <div className="hidden md:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-l dark:border-white/5 border-black/5">
-                                <div className="h-8 w-24 rounded-md dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
-                                <div className="flex-1 rounded-lg dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
-                                <div className="h-8 w-full rounded-md dark:bg-neutral-800 bg-neutral-200 animate-pulse" />
+                                {/* Timer bar */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md dark:bg-neutral-800 bg-neutral-200">
+                                        <IconClock className="w-3 h-3 dark:text-neutral-400 text-neutral-500" />
+                                        <span className="text-[10px] font-mono font-bold dark:text-neutral-300 text-neutral-600">09:42</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md dark:bg-neutral-800 bg-neutral-200">
+                                        <IconClock className="w-3 h-3 dark:text-neutral-400 text-neutral-500" />
+                                        <span className="text-[10px] font-mono font-bold dark:text-neutral-300 text-neutral-600">08:15</span>
+                                    </div>
+                                </div>
+                                {/* Chat area */}
+                                <div className="flex-1 rounded-lg dark:bg-neutral-800/60 bg-neutral-200/60 p-2.5 flex flex-col gap-1.5 overflow-hidden">
+                                    <div className="flex items-center gap-1 mb-1">
+                                        <IconMessageCircle className="w-3 h-3 dark:text-neutral-500 text-neutral-400" />
+                                        <span className="text-[9px] font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400">Chat</span>
+                                    </div>
+                                    <div className="flex flex-col gap-1.5 text-[10px]">
+                                        <div className="flex gap-1.5">
+                                            <span className="font-semibold text-green-500">Player_1284:</span>
+                                            <span className="dark:text-neutral-400 text-neutral-500">Good luck!</span>
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            <span className="font-semibold text-emerald-400">ChessKing99:</span>
+                                            <span className="dark:text-neutral-400 text-neutral-500">You too! gl hf</span>
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            <span className="font-semibold text-green-500">Player_1284:</span>
+                                            <span className="dark:text-neutral-400 text-neutral-500">Nice move!</span>
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            <span className="font-semibold text-emerald-400">ChessKing99:</span>
+                                            <span className="dark:text-neutral-400 text-neutral-500">Thanks 😄</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* Chat input bar */}
+                                <div className="flex items-center gap-2 h-8 rounded-md dark:bg-neutral-800 bg-neutral-200 px-2">
+                                    <span className="text-[10px] dark:text-neutral-500 text-neutral-400 flex-1">Type a message...</span>
+                                    <IconSend className="w-3.5 h-3.5 dark:text-neutral-500 text-neutral-400" />
+                                </div>
                             </div>
                         </div>
 
