@@ -4,7 +4,7 @@ import { useSocket } from "../../hooks/useSocket";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords } from "@tabler/icons-react";
 
 export default function GamePage() {
@@ -21,6 +21,10 @@ export default function GamePage() {
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
     const [moveHistory, setMoveHistory] = useState<string[]>([]);
+    const [whiteTime, setWhiteTime] = useState(10 * 60 * 1000); // ms
+    const [blackTime, setBlackTime] = useState(10 * 60 * 1000);
+    const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
+    const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -76,6 +80,9 @@ export default function GamePage() {
                 case INIT_GAME: {
                     setBoard(chess.board());
                     setMoveHistory([]);
+                    setWhiteTime(10 * 60 * 1000);
+                    setBlackTime(10 * 60 * 1000);
+                    setActiveColor('white');
                     setStatus("Match started! Opponent connected.");
                     setIsSearching(false);
                     setIsPlaying(true);
@@ -89,13 +96,20 @@ export default function GamePage() {
                     chess.move(move);
                     setBoard(chess.board());
                     setMoveHistory(chess.history());
+                    // After opponent moves, it's now our turn — active color flips
+                    setActiveColor(chess.turn() === 'w' ? 'white' : 'black');
                     console.log("Move made");
                     break;
                 }
+                case TIME_UPDATE: {
+                    setWhiteTime(message.payload.whiteTime);
+                    setBlackTime(message.payload.blackTime);
+                    break;
+                }
                 case GAME_OVER: {
-                    setStatus(`Game Over! ${message.payload.winner} won.`);
+                    setStatus(`Game Over! ${message.payload.winner} won${message.payload.reason ? ` (${message.payload.reason})` : ''}.`);
                     setIsPlaying(false);
-                    alert(message.payload.winner)
+                    alert(`${message.payload.winner} wins${message.payload.reason ? ` by ${message.payload.reason}` : ''}!`);
                     console.log("Game Over");
                     break;
                 }
@@ -143,6 +157,38 @@ export default function GamePage() {
         }
     }, [status]);
 
+    // Local countdown interval for smooth timer display
+    useEffect(() => {
+        if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+        }
+        if (!isPlaying) return;
+
+        countdownRef.current = setInterval(() => {
+            if (activeColor === 'white') {
+                setWhiteTime(prev => Math.max(0, prev - 100));
+            } else {
+                setBlackTime(prev => Math.max(0, prev - 100));
+            }
+        }, 100);
+
+        return () => {
+            if (countdownRef.current) {
+                clearInterval(countdownRef.current);
+                countdownRef.current = null;
+            }
+        };
+    }, [isPlaying, activeColor]);
+
+    // Format ms to mm:ss
+    function formatTime(ms: number): string {
+        const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
     if (!socket) {
         return (
             <div className="h-screen w-screen flex justify-center items-center dark:bg-black bg-neutral-200">
@@ -159,6 +205,12 @@ export default function GamePage() {
         setIsSearching(true);
         setStatus("Searching for an opponent...");
     }
+
+    // Determine which timer belongs to whom based on player's color
+    const opponentTime = playerColor === 'white' ? blackTime : whiteTime;
+    const yourTime = playerColor === 'white' ? whiteTime : blackTime;
+    const isOpponentActive = (playerColor === 'white' && activeColor === 'black') || (playerColor === 'black' && activeColor === 'white');
+    const isYourActive = !isOpponentActive;
 
     // Pair moves into rows: [["e4","e5"], ["Nf3","Nc6"], ...]
     const movePairs: [string, string | undefined][] = [];
@@ -289,14 +341,14 @@ export default function GamePage() {
                                     <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                <span className="font-mono text-xs sm:text-sm lg:text-lg font-semibold text-white/90">10:00</span>
+                            <div className={`bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isOpponentActive && isPlaying ? 'border-red-500/30 bg-red-500/10' : 'border-white/5'}`}>
+                                <span className={`font-mono text-xs sm:text-sm lg:text-lg font-semibold ${opponentTime <= 30000 && isPlaying ? 'text-red-400' : 'text-white/90'}`}>{formatTime(opponentTime)}</span>
                             </div>
                         </div>
 
                         {/* The Board */}
                         <div className="w-full flex items-center justify-center">
-                            <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => setMoveHistory(chess.history())} />
+                            <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => { setMoveHistory(chess.history()); setActiveColor(chess.turn() === 'w' ? 'white' : 'black'); }} />
                         </div>
 
                         {/* Your Info */}
@@ -310,8 +362,8 @@ export default function GamePage() {
                                     <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                <span className="font-mono text-xs sm:text-sm lg:text-lg font-semibold text-green-400">10:00</span>
+                            <div className={`bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isYourActive && isPlaying ? 'border-green-500/30 bg-green-500/10' : 'border-white/5'}`}>
+                                <span className={`font-mono text-xs sm:text-sm lg:text-lg font-semibold ${yourTime <= 30000 && isPlaying ? 'text-red-400' : 'text-green-400'}`}>{formatTime(yourTime)}</span>
                             </div>
                         </div>
                     </div>
