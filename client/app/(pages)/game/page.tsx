@@ -28,7 +28,18 @@ export default function GamePage() {
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
+    const mobileLocalVideoRef = useRef<HTMLVideoElement>(null);
+    const mobileRemoteVideoRef = useRef<HTMLVideoElement>(null);
+    const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+
+    // Sync video streams to both desktop and mobile video elements
+    const syncVideoStreams = () => {
+        if (localStreamRef.current) {
+            if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+            if (mobileLocalVideoRef.current) mobileLocalVideoRef.current.srcObject = localStreamRef.current;
+        }
+    };
 
     useEffect(() => {
         if (!socket) {
@@ -48,15 +59,23 @@ export default function GamePage() {
             };
 
             pc.ontrack = (event) => {
+                const stream = event.streams[0];
                 if (remoteVideoRef.current) {
-                    remoteVideoRef.current.srcObject = event.streams[0];
+                    remoteVideoRef.current.srcObject = stream;
+                }
+                if (mobileRemoteVideoRef.current) {
+                    mobileRemoteVideoRef.current.srcObject = stream;
                 }
             };
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                localStreamRef.current = stream;
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
+                }
+                if (mobileLocalVideoRef.current) {
+                    mobileLocalVideoRef.current.srcObject = stream;
                 }
                 stream.getTracks().forEach((track) => pc.addTrack(track, stream));
             } catch (err) {
@@ -254,7 +273,7 @@ export default function GamePage() {
                             <span>Opponent</span>
                         </div>
                     )}
-                    <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10 lg:block hidden" />
+                    <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10" />
                 </div>
 
                 {/* Your Camera — desktop only grid item */}
@@ -266,7 +285,7 @@ export default function GamePage() {
                             <span>You</span>
                         </div>
                     )}
-                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-10 scale-x-[-1] lg:block hidden" />
+                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-10 scale-x-[-1]" />
                 </div>
 
                 {/* Game History — desktop only grid item */}
@@ -317,7 +336,7 @@ export default function GamePage() {
                                 {!isPlaying && (
                                     <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
                                 )}
-                                <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+                                <video ref={mobileRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
                             </div>
                             <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
                                 <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
@@ -326,7 +345,7 @@ export default function GamePage() {
                                 {!isPlaying && (
                                     <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
                                 )}
-                                <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+                                <video ref={mobileLocalVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
                             </div>
                         </div>
 
