@@ -223,26 +223,26 @@ export default function GamePage() {
                 </div>
 
                 {/* Chess Board Area */}
-                <div className="game-board bg-neutral-900/60 backdrop-blur-md rounded-xl lg:rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center px-2 py-1 lg:p-4 relative overflow-hidden">
+                <div className="game-board bg-neutral-900/60 backdrop-blur-md rounded-xl sm:rounded-2xl lg:rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center px-2 py-1 sm:px-4 sm:py-3 lg:p-4 relative overflow-hidden">
                     {/* Glow effects (desktop only) */}
                     <div className="hidden lg:block absolute top-1/4 left-1/4 -translate-x-1/2 w-[300px] h-[300px] bg-green-500 rounded-full blur-[200px] opacity-20 pointer-events-none"></div>
                     <div className="hidden lg:block absolute bottom-1/4 right-1/4 translate-x-1/4 w-[300px] h-[300px] bg-green-400 rounded-full blur-[200px] opacity-10 pointer-events-none"></div>
 
-                    <div className="flex flex-col gap-1 lg:gap-4 w-full max-w-[600px] z-10">
+                    <div className="flex flex-col gap-1 sm:gap-2 lg:gap-4 w-full max-w-[480px] sm:max-w-[540px] lg:max-w-[600px] mx-auto z-10">
                         {/* Mobile: Cameras side by side on top */}
-                        <div className="lg:hidden flex gap-2 w-full">
-                            <div className="flex-1 aspect-video rounded-lg bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
-                                <div className="absolute top-1 left-1.5 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5">
-                                    <span className="text-[8px] text-neutral-300 font-medium">Opponent</span>
+                        <div className="lg:hidden flex gap-2 sm:gap-3 w-full">
+                            <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
+                                <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
+                                    <span className="text-[8px] sm:text-[10px] text-neutral-300 font-medium">Opponent</span>
                                 </div>
                                 {!isPlaying && (
                                     <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
                                 )}
                                 <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
                             </div>
-                            <div className="flex-1 aspect-video rounded-lg bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
-                                <div className="absolute top-1 left-1.5 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5">
-                                    <span className="text-[8px] text-green-400 font-medium">You</span>
+                            <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
+                                <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
+                                    <span className="text-[8px] sm:text-[10px] text-green-400 font-medium">You</span>
                                 </div>
                                 {!isPlaying && (
                                     <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
@@ -254,16 +254,16 @@ export default function GamePage() {
                         {/* Opponent Info */}
                         <div className="w-full flex items-center justify-between">
                             <div className="flex items-center gap-2 lg:gap-3">
-                                <div className="w-7 h-7 lg:w-12 lg:h-12 bg-neutral-800 rounded-lg flex items-center justify-center border border-white/10 shadow-md">
-                                    <IconUser className="w-4 h-4 lg:w-6 lg:h-6 text-neutral-400" />
+                                <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 bg-neutral-800 rounded-lg flex items-center justify-center border border-white/10 shadow-md">
+                                    <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-neutral-400" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-white/90 text-xs lg:text-base">Opponent</span>
-                                    <span className="text-[10px] lg:text-xs text-neutral-500">Rating: 1200</span>
+                                    <span className="font-bold text-white/90 text-xs sm:text-sm lg:text-base">Opponent</span>
+                                    <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                <span className="font-mono text-xs lg:text-lg font-semibold text-white/90">10:00</span>
+                            <div className="bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
+                                <span className="font-mono text-xs sm:text-sm lg:text-lg font-semibold text-white/90">10:00</span>
                             </div>
                         </div>
 
@@ -275,16 +275,16 @@ export default function GamePage() {
                         {/* Your Info */}
                         <div className="w-full flex items-center justify-between">
                             <div className="flex items-center gap-2 lg:gap-3">
-                                <div className="w-7 h-7 lg:w-12 lg:h-12 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30 shadow-md">
-                                    <IconUser className="w-4 h-4 lg:w-6 lg:h-6 text-green-400" />
+                                <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30 shadow-md">
+                                    <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-400" />
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-bold text-green-400 text-xs lg:text-base">You</span>
-                                    <span className="text-[10px] lg:text-xs text-neutral-500">Rating: 1200</span>
+                                    <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-base">You</span>
+                                    <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                <span className="font-mono text-xs lg:text-lg font-semibold text-green-400">10:00</span>
+                            <div className="bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
+                                <span className="font-mono text-xs sm:text-sm lg:text-lg font-semibold text-green-400">10:00</span>
                             </div>
                         </div>
                     </div>
@@ -341,13 +341,13 @@ export default function GamePage() {
                 </div>
 
                 {/* Mobile Bottom Toolbar */}
-                <div className="game-toolbar lg:hidden bg-neutral-900/90 backdrop-blur-md rounded-xl border border-white/10 flex items-center justify-around px-2">
+                <div className="game-toolbar lg:hidden bg-neutral-900/90 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 flex items-center justify-around px-2 sm:px-4">
                     <button
                         onClick={() => setMobileChatOpen(true)}
                         className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors relative"
                     >
-                        <IconMessageCircle className="w-5 h-5 text-neutral-400" />
-                        <span className="text-[9px] text-neutral-500">Chat</span>
+                        <IconMessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" />
+                        <span className="text-[9px] sm:text-xs text-neutral-500">Chat</span>
                         {chatMessages.length > 0 && (
                             <span className="absolute -top-0.5 right-0 w-4 h-4 bg-red-500 rounded-full text-[8px] font-bold text-white flex items-center justify-center">
                                 {chatMessages.length > 99 ? '99' : chatMessages.length}
@@ -358,16 +358,16 @@ export default function GamePage() {
                         onClick={() => setMobileHistoryOpen(true)}
                         className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                     >
-                        <IconHistory className="w-5 h-5 text-neutral-400" />
-                        <span className="text-[9px] text-neutral-500">History</span>
+                        <IconHistory className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" />
+                        <span className="text-[9px] sm:text-xs text-neutral-500">History</span>
                     </button>
                     <button
                         onClick={handlePlay}
                         disabled={isSearching || isPlaying}
                         className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
                     >
-                        <IconSwords className="w-5 h-5 text-green-400" />
-                        <span className="text-[9px] text-green-400 font-medium">{isSearching ? 'Searching' : isPlaying ? 'Playing' : 'Find Match'}</span>
+                        <IconSwords className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
+                        <span className="text-[9px] sm:text-xs text-green-400 font-medium">{isSearching ? 'Searching' : isPlaying ? 'Playing' : 'Find Match'}</span>
                     </button>
                 </div>
 

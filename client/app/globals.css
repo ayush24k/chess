@@ -56,6 +56,15 @@ body {
   grid-area: toolbar;
 }
 
+/* Tablet-ish single-column improvements (sm–md range) */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .game-grid {
+    grid-template-rows: minmax(0, 1fr) 56px;
+    gap: 8px;
+    padding: 12px;
+  }
+}
+
 @media (min-width: 1024px) {
   .game-cam-opp,
   .game-cam-you,
