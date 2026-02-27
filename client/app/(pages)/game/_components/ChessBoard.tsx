@@ -2,6 +2,7 @@
 import { MOVE } from "@/app/messages/messages";
 import { Chess, Color, PieceSymbol, Square } from "chess.js";
 import { useState } from "react";
+import Image from "next/image";
 
 export default function ChessBoard({ board, socket, setBoard, chess, playerColor }: {
     chess: Chess;
@@ -20,10 +21,12 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
 
     return (
         <div className="text-neutral-900 p-4">
-            {board.map((_, _i) => { const i = playerColor === "black" ? 7 - _i : _i; const row = board[i];
+            {board.map((_, _i) => {
+                const i = playerColor === "black" ? 7 - _i : _i; const row = board[i];
                 return (
                     <div key={i} className="flex cursor-grab">
-                        {row.map((_, _j) => { const j = playerColor === "black" ? 7 - _j : _j; const square = row[j];
+                        {row.map((_, _j) => {
+                            const j = playerColor === "black" ? 7 - _j : _j; const square = row[j];
                             const squareRepresentation = String.fromCharCode(97 + (j % 8)) + "" + (8 - i) as Square;
                             return (
                                 <div
@@ -58,7 +61,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                                     }}
                                 >
                                     {/* {square ? square.type : ""} */}
-                                    {square ? <img className="w-12" src={`/chessPieces/${square.color === 'b' ? `${square.type}.png` : `${square.type.toUpperCase()}-white.png`}`} /> : null}
+                                    {square ? <Image className="w-12" alt={square.type} width={48} height={48} src={`/chessPieces/${square.color === 'b' ? `${square.type}.png` : `${square.type.toUpperCase()}-white.png`}`} /> : null}
                                 </div>
                             )
                         })}

@@ -69,7 +69,7 @@ export default function SignIn() {
                     </form>
 
                     <div className="mt-8 text-sm dark:text-neutral-400 text-neutral-600">
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                         <Link href="/signup" className="text-green-600 hover:text-green-500 dark:text-green-400 font-medium transition-colors">
                             Sign up here
                         </Link>
