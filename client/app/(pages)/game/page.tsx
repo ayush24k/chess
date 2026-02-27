@@ -229,6 +229,28 @@ export default function GamePage() {
                     <div className="hidden lg:block absolute bottom-1/4 right-1/4 translate-x-1/4 w-[300px] h-[300px] bg-green-400 rounded-full blur-[200px] opacity-10 pointer-events-none"></div>
 
                     <div className="flex flex-col gap-1 lg:gap-4 w-full max-w-[600px] z-10">
+                        {/* Mobile: Cameras side by side on top */}
+                        <div className="lg:hidden flex gap-2 w-full">
+                            <div className="flex-1 aspect-video rounded-lg bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
+                                <div className="absolute top-1 left-1.5 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5">
+                                    <span className="text-[8px] text-neutral-300 font-medium">Opponent</span>
+                                </div>
+                                {!isPlaying && (
+                                    <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
+                                )}
+                                <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 aspect-video rounded-lg bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
+                                <div className="absolute top-1 left-1.5 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5">
+                                    <span className="text-[8px] text-green-400 font-medium">You</span>
+                                </div>
+                                {!isPlaying && (
+                                    <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
+                                )}
+                                <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+                            </div>
+                        </div>
+
                         {/* Opponent Info */}
                         <div className="w-full flex items-center justify-between">
                             <div className="flex items-center gap-2 lg:gap-3">
@@ -240,15 +262,8 @@ export default function GamePage() {
                                     <span className="text-[10px] lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                    <span className="font-mono text-xs lg:text-lg font-semibold text-white/90">10:00</span>
-                                </div>
-                                {/* Mobile: Opponent camera */}
-                                <div className="lg:hidden w-8 h-8 rounded-md bg-neutral-800 border border-white/10 relative overflow-hidden flex items-center justify-center">
-                                    {!isPlaying && <IconVideo className="w-4 h-4 text-neutral-500 opacity-50" />}
-                                    <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
-                                </div>
+                            <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
+                                <span className="font-mono text-xs lg:text-lg font-semibold text-white/90">10:00</span>
                             </div>
                         </div>
 
@@ -268,15 +283,8 @@ export default function GamePage() {
                                     <span className="text-[10px] lg:text-xs text-neutral-500">Rating: 1200</span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
-                                    <span className="font-mono text-xs lg:text-lg font-semibold text-green-400">10:00</span>
-                                </div>
-                                {/* Mobile: Your camera */}
-                                <div className="lg:hidden w-8 h-8 rounded-md bg-neutral-800 border border-green-500/30 relative overflow-hidden flex items-center justify-center">
-                                    {!isPlaying && <IconVideo className="w-4 h-4 text-green-400 opacity-50" />}
-                                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
-                                </div>
+                            <div className="bg-neutral-800 w-16 h-6 lg:w-32 lg:h-10 rounded-md shadow-inner border border-white/5 flex items-center justify-center">
+                                <span className="font-mono text-xs lg:text-lg font-semibold text-green-400">10:00</span>
                             </div>
                         </div>
                     </div>
