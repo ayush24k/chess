@@ -228,7 +228,7 @@ export default function GamePage() {
                     <div className="hidden lg:block absolute top-1/4 left-1/4 -translate-x-1/2 w-[300px] h-[300px] bg-green-500 rounded-full blur-[200px] opacity-20 pointer-events-none"></div>
                     <div className="hidden lg:block absolute bottom-1/4 right-1/4 translate-x-1/4 w-[300px] h-[300px] bg-green-400 rounded-full blur-[200px] opacity-10 pointer-events-none"></div>
 
-                    <div className="flex flex-col gap-1 sm:gap-2 lg:gap-4 w-full max-w-[480px] sm:max-w-[540px] lg:max-w-[600px] mx-auto z-10">
+                    <div className="game-board-inner flex flex-col gap-1 sm:gap-2 lg:gap-4 w-full mx-auto z-10">
                         {/* Mobile: Cameras side by side on top */}
                         <div className="lg:hidden flex gap-2 sm:gap-3 w-full">
                             <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">

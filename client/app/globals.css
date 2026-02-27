@@ -93,7 +93,30 @@ body {
 .game-cam-opp { grid-area: cam-opp; }
 .game-cam-you { grid-area: cam-you; }
 .game-history { grid-area: history; }
-.game-board { grid-area: board; }
+.game-board {
+  grid-area: board;
+  min-height: 0;
+}
+
+/*
+ * Constrain the inner board column's max-width based on viewport height.
+ * The board is square, so limiting width also limits height.
+ * Formula: total_height = board + 0.28*board (cameras 16:9) + fixed_overhead ≤ 100dvh
+ *   => board ≤ (100dvh − overhead) / 1.28
+ */
+.game-board-inner {
+  max-width: min(480px, calc((100dvh - 140px) / 1.28));
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .game-board-inner {
+    max-width: min(540px, calc((100dvh - 220px) / 1.28));
+  }
+}
+@media (min-width: 1024px) {
+  .game-board-inner {
+    max-width: 600px;
+  }
+}
 .game-chat { grid-area: chat; }
 .game-controls { grid-area: controls; }
 
