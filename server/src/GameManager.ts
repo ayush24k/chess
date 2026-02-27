@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "./messages";
+import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_COUNT } from "./messages";
 import { Game } from "./Game";
 
 export class GameManager {
@@ -16,14 +16,28 @@ export class GameManager {
     addUser(socket: WebSocket) {
         this.users.push(socket);
         this.addHandler(socket);
+        this.broadcastPlayerCount();
     }
 
     removeUser(socket: WebSocket) {
         this.users = this.users.filter((user) => {
             return user != socket;
         })
+        this.broadcastPlayerCount();
 
         // stop cuz user has left
+    }
+
+    private broadcastPlayerCount() {
+        const message = JSON.stringify({
+            type: PLAYER_COUNT,
+            payload: { count: this.users.length }
+        });
+        this.users.forEach((user) => {
+            if (user.readyState === WebSocket.OPEN) {
+                user.send(message);
+            }
+        });
     }
 
     private startGame(socket: WebSocket) {

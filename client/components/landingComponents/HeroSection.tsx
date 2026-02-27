@@ -2,6 +2,7 @@ import Link from "next/link";
 import Button from "../ui/Button";
 import StartAnimation from "../animation/StartAnimation";
 import { IconBrandGithub, IconStarFilled, IconChess, IconVideo, IconMessage } from "@tabler/icons-react";
+import PlayersOnline from "./PlayersOnline";
 
 export default function HeroSection() {
     return (
@@ -50,6 +51,9 @@ export default function HeroSection() {
                                     </Link>
                                 </Button>
                             </div>
+
+                            {/* Live player count */}
+                            <PlayersOnline />
                         </div>
                     </StartAnimation>
 
