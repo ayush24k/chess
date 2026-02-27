@@ -168,6 +168,9 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
         const rect = boardRef.current.getBoundingClientRect();
         const sqSize = rect.width / 8;
 
+        // Only store drag start info — don't call setFrom yet
+        // setFrom will be called by handlePointerMove once the drag threshold is exceeded,
+        // or by handleSquareClick for a normal tap
         setDrag({
             square: squareRepresentation,
             piece: { type: square.type, color: square.color },
@@ -177,7 +180,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
             currentY: e.clientY,
             squareSize: sqSize,
         });
-        setFrom(squareRepresentation);
+        isDraggingRef.current = false;
 
         // Capture pointer for smooth dragging
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -190,38 +193,48 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
         const dy = Math.abs(e.clientY - drag.startY);
         // Only start visual drag after moving a bit (3px threshold)
         if (dx > 3 || dy > 3) {
-            isDraggingRef.current = true;
+            if (!isDraggingRef.current) {
+                isDraggingRef.current = true;
+                // Show legal moves when drag starts
+                setFrom(drag.square);
+            }
         }
 
         setDrag(prev => prev ? { ...prev, currentX: e.clientX, currentY: e.clientY } : null);
 
         // Update hover square for highlighting
-        const sq = getSquareFromPoint(e.clientX, e.clientY);
-        setHoverSquare(sq);
+        if (isDraggingRef.current) {
+            const sq = getSquareFromPoint(e.clientX, e.clientY);
+            setHoverSquare(sq);
+        }
     }, [drag, getSquareFromPoint]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         if (!drag) return;
 
-        const dx = Math.abs(e.clientX - drag.startX);
-        const dy = Math.abs(e.clientY - drag.startY);
-        const wasDrag = dx > 3 || dy > 3;
-
+        const wasDrag = isDraggingRef.current;
         const targetSquare = getSquareFromPoint(e.clientX, e.clientY);
 
         setDrag(null);
         setHoverSquare(null);
 
-        if (wasDrag && targetSquare && targetSquare !== drag.square) {
-            // Dropped on a different square — try the move
-            isDraggingRef.current = true;
-            const success = executeMove(drag.square, targetSquare);
-            if (!success) {
-                // Failed drag move — keep piece selected so user can try again via click
+        if (wasDrag) {
+            // Was a real drag — handle here, skip the upcoming click event
+            if (targetSquare && targetSquare !== drag.square) {
+                const success = executeMove(drag.square, targetSquare);
+                if (!success) {
+                    // Failed drag — keep piece selected so user can retry via click
+                    setFrom(drag.square);
+                }
+            } else {
+                // Dropped back on same square or outside — keep selected
                 setFrom(drag.square);
             }
+            // isDraggingRef stays true so the click handler skips
+        } else {
+            // Wasn't a drag (just a tap) — let the click handler deal with it
+            isDraggingRef.current = false;
         }
-        // If not a drag (just a tap), let the click handler deal with it
     }, [drag, getSquareFromPoint, executeMove]);
 
     // Compute drag ghost position
