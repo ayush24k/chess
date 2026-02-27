@@ -3,7 +3,7 @@ import { IconBrandGithub, IconBrandTwitter, IconBrandDiscord } from "@tabler/ico
 
 export default function Footer() {
     return (
-        <div className="w-full relative z-10 pb-8 pt-10">
+        <div className="w-full dark:bg-neutral-950 bg-neutral-100 pb-8 pt-4">
             <footer className="py-8 flex flex-col md:flex-row justify-between items-center gap-6 lg:mx-auto mx-5 max-w-6xl px-8 rounded-xl md:rounded-2xl backdrop-blur-md dark:bg-black/30 bg-white/30 shadow-2xl border-[1px] dark:border-white/30 border-black/30">
 
                 {/* Logo and Copyright */}

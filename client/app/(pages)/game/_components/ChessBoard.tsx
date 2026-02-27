@@ -343,8 +343,8 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                                         flex-1 aspect-square flex justify-center items-center cursor-pointer relative
                                         transition-colors duration-150
                                         ${isDark
-                                            ? isSelected ? 'bg-yellow-600' : isDragHover && isLegalTarget ? 'bg-yellow-700/70' : 'bg-green-600'
-                                            : isSelected ? 'bg-yellow-300' : isDragHover && isLegalTarget ? 'bg-yellow-200/70' : 'bg-green-300'
+                                            ? isSelected ? 'bg-yellow-600' : isDragHover && isLegalTarget ? 'bg-yellow-700/70' : 'bg-green-700'
+                                            : isSelected ? 'bg-yellow-300' : isDragHover && isLegalTarget ? 'bg-yellow-200/70' : 'bg-amber-200'
                                         }
                                         ${isShaking ? 'animate-shake' : ''}
                                     `}
