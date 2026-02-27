@@ -20,18 +20,18 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
 
 
     return (
-        <div className="text-neutral-900 p-4">
+        <div className="w-full max-w-[576px] mx-auto">
             {board.map((_, _i) => {
                 const i = playerColor === "black" ? 7 - _i : _i; const row = board[i];
                 return (
-                    <div key={i} className="flex cursor-grab">
+                    <div key={i} className="flex">
                         {row.map((_, _j) => {
                             const j = playerColor === "black" ? 7 - _j : _j; const square = row[j];
                             const squareRepresentation = String.fromCharCode(97 + (j % 8)) + "" + (8 - i) as Square;
                             return (
                                 <div
                                     key={j}
-                                    className={`w-18 h-18 flex justify-center items-center ${(i + j) % 2 === 0 ? `bg-green-600` : `bg-green-300`}`}
+                                    className={`flex-1 aspect-square flex justify-center items-center cursor-pointer ${(i + j) % 2 === 0 ? `bg-green-600` : `bg-green-300`}`}
                                     onClick={() => {
                                         if (!from) {
                                             setfrom(squareRepresentation)
@@ -60,8 +60,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                                         }
                                     }}
                                 >
-                                    {/* {square ? square.type : ""} */}
-                                    {square ? <Image className="w-12" alt={square.type} width={48} height={48} src={`/chessPieces/${square.color === 'b' ? `${square.type}.png` : `${square.type.toUpperCase()}-white.png`}`} /> : null}
+                                    {square ? <Image className="w-[75%] h-[75%] object-contain" alt={square.type} width={48} height={48} src={`/chessPieces/${square.color === 'b' ? `${square.type}.png` : `${square.type.toUpperCase()}-white.png`}`} /> : null}
                                 </div>
                             )
                         })}
