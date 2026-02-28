@@ -29,12 +29,12 @@ import { useSocketContext } from "@/app/contexts/SocketContext"
 
 const SIDEBAR_ITEMS = [
     { icon: IconHome, label: "Lobby", href: "/lobby", active: true },
-    { icon: IconUser, label: "Profile", href: "#" },
-    { icon: IconHistory, label: "Game History", href: "#" },
-    { icon: IconTrophy, label: "Leaderboard", href: "#" },
-    { icon: IconChartBar, label: "Statistics", href: "#" },
-    { icon: IconUsers, label: "Friends", href: "#" },
-    { icon: IconSettings, label: "Settings", href: "#" },
+    { icon: IconUser, label: "Profile", href: "/profile" },
+    { icon: IconHistory, label: "Game History", href: "/history" },
+    { icon: IconTrophy, label: "Leaderboard", href: "/leaderboard" },
+    { icon: IconChartBar, label: "Statistics", href: "/statistics" },
+    { icon: IconUsers, label: "Friends", href: "/friends" },
+    { icon: IconSettings, label: "Settings", href: "/settings" },
 ]
 
 export default function LobbyPage() {
@@ -204,9 +204,9 @@ export default function LobbyPage() {
                                         </div>
                                         <div className="py-1">
                                             {[
-                                                { icon: IconUser, label: "Profile", href: "#" },
-                                                { icon: IconHistory, label: "Game History", href: "#" },
-                                                { icon: IconSettings, label: "Settings", href: "#" },
+                                                { icon: IconUser, label: "Profile", href: "/profile" },
+                                                { icon: IconHistory, label: "Game History", href: "/history" },
+                                                { icon: IconSettings, label: "Settings", href: "/settings" },
                                             ].map((item) => (
                                                 <Link
                                                     key={item.label}
