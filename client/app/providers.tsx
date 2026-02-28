@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react"
 import { ToastProvider } from "@/components/ui/Toast"
+import { SocketProvider } from "./contexts/SocketContext"
 
 export default function Providers ({children}: {
     children: React.ReactNode;
@@ -9,7 +10,9 @@ export default function Providers ({children}: {
     return (
         <SessionProvider>
             <ToastProvider>
-                {children}
+                <SocketProvider>
+                    {children}
+                </SocketProvider>
             </ToastProvider>
         </SessionProvider>
     )

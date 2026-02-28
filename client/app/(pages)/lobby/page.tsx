@@ -25,6 +25,7 @@ import {
 } from "@tabler/icons-react"
 import { useToast } from "@/components/ui/Toast"
 import PlayersOnline from "@/components/landingComponents/PlayersOnline"
+import { useSocketContext } from "@/app/contexts/SocketContext"
 
 const SIDEBAR_ITEMS = [
     { icon: IconHome, label: "Lobby", href: "/lobby", active: true },
@@ -40,7 +41,11 @@ export default function LobbyPage() {
     const { data: session, status } = useSession()
     const router = useRouter()
     const toast = useToast()
+    const { isSearching: isMatchSearching, matchData, findMatch, cancelSearch } = useSocketContext()
     const isAuthenticated = status === "authenticated"
+
+    // User profile from DB
+    const [userStats, setUserStats] = useState<{ rating: number; totalGames: number; wins: number } | null>(null)
 
     // Dropdown / sidebar state
     const [profileOpen, setProfileOpen] = useState(false)
@@ -52,6 +57,24 @@ export default function LobbyPage() {
     const streamRef = useRef<MediaStream | null>(null)
     const [cameraActive, setCameraActive] = useState(false)
     const [cameraError, setCameraError] = useState<string | null>(null)
+
+    // Fetch user stats from DB
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetch("/api/user/me")
+                .then(res => res.ok ? res.json() : null)
+                .then(data => {
+                    if (data?.user) {
+                        setUserStats({
+                            rating: data.user.rating,
+                            totalGames: data.user.totalGames,
+                            wins: data.user.wins,
+                        })
+                    }
+                })
+                .catch(() => {})
+        }
+    }, [isAuthenticated])
 
     // Close profile dropdown on outside click
     useEffect(() => {
@@ -100,12 +123,23 @@ export default function LobbyPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    // Navigate to game page when match is found
+    useEffect(() => {
+        if (matchData) {
+            router.push("/game")
+        }
+    }, [matchData, router])
+
     function handlePlay() {
         if (!isAuthenticated) {
             toast.error("Please sign in to play")
             return
         }
-        router.push("/game")
+        findMatch({
+            userId: (session?.user as any)?.id || 'anonymous',
+            name: session?.user?.name || 'Guest',
+            rating: userStats?.rating || 500,
+        })
     }
 
     function handleLogout() {
@@ -293,8 +327,8 @@ export default function LobbyPage() {
                 </aside>
 
                 {/* ── Main Content ── */}
-                <main className="flex-1 overflow-y-auto">
-                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                <main className="flex-1 overflow-y-auto flex items-center justify-center">
+                    <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
 
                         {/* Title */}
                         <div className="text-center mb-8 sm:mb-12">
@@ -310,10 +344,10 @@ export default function LobbyPage() {
                         </div>
 
                         {/* Webcam + Play Section */}
-                        <div className={`grid grid-cols-1 gap-6 lg:gap-6 items-start ${isAuthenticated ? "lg:grid-cols-[240px_1fr_280px]" : "lg:grid-cols-[1fr_320px]"}`}>
+                        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6 lg:gap-6 items-center">
 
-                            {/* Left: Quick Actions (only when authenticated) */}
-                            {isAuthenticated && (
+                            {/* Left: Quick Actions (authenticated) or spacer (guest) */}
+                            {isAuthenticated ? (
                                 <div className="order-2 lg:order-1 rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-4 backdrop-blur-md shadow-lg self-center">
                                     <h3 className="text-xs font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400 mb-3">Quick Actions</h3>
                                     <div className="flex flex-col gap-1.5">
@@ -332,6 +366,8 @@ export default function LobbyPage() {
                                         ))}
                                     </div>
                                 </div>
+                            ) : (
+                                <div className="hidden lg:block order-1" />
                             )}
 
                             {/* Center: Webcam Box */}
@@ -422,9 +458,9 @@ export default function LobbyPage() {
 
                                         <div className="grid grid-cols-3 gap-2 mb-4">
                                             {[
-                                                { label: "Rating", value: "500" },
-                                                { label: "Wins", value: "0" },
-                                                { label: "Games", value: "0" },
+                                                { label: "Rating", value: userStats?.rating?.toString() ?? "500" },
+                                                { label: "Wins", value: userStats?.wins?.toString() ?? "0" },
+                                                { label: "Games", value: userStats?.totalGames?.toString() ?? "0" },
                                             ].map((stat) => (
                                                 <div key={stat.label} className="text-center rounded-xl dark:bg-neutral-800/60 bg-neutral-100 p-2 border dark:border-white/5 border-black/5">
                                                     <p className="text-base font-bold dark:text-white text-neutral-900">{stat.value}</p>
@@ -436,24 +472,17 @@ export default function LobbyPage() {
                                         {/* Play Button */}
                                         <button
                                             onClick={handlePlay}
-                                            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-bold text-base tracking-wide transition-all shadow-xl hover:shadow-green-500/20 active:scale-[0.98]"
+                                            disabled={isMatchSearching}
+                                            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-bold text-base tracking-wide transition-all shadow-xl hover:shadow-green-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
                                             <IconPlayerPlay className="w-5 h-5" />
-                                            Play Now
+                                            {isMatchSearching ? 'Searching...' : 'Play Now'}
                                         </button>
                                     </div>
                                 ) : (
                                     /* Not signed in: show auth options */
-                                    <div className="rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-6 backdrop-blur-md shadow-xl">
-                                        <div className="text-center mb-6">
-                                            <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
-                                                <IconChess className="w-8 h-8 text-green-500" />
-                                            </div>
-                                            <h2 className="text-xl font-bold dark:text-white text-neutral-900 mb-1">Sign In to Play</h2>
-                                            <p className="text-sm dark:text-neutral-400 text-neutral-600">Create an account or sign in to start playing</p>
-                                        </div>
-
-                                        <div className="flex flex-col gap-3">
+                                    <div className="rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-4 backdrop-blur-md shadow-xl">
+                                        <div className="flex flex-col gap-2.5">
                                             <Link
                                                 href="/signin"
                                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors shadow-md"
@@ -467,25 +496,25 @@ export default function LobbyPage() {
                                                 Create Account
                                             </Link>
 
-                                            <div className="flex items-center gap-3 my-2">
+                                            <div className="flex items-center gap-3 my-1">
                                                 <div className="h-[1px] flex-1 dark:bg-neutral-700 bg-neutral-300" />
                                                 <span className="text-[10px] dark:text-neutral-500 text-neutral-400 uppercase font-medium">or</span>
                                                 <div className="h-[1px] flex-1 dark:bg-neutral-700 bg-neutral-300" />
                                             </div>
 
-                                            <div className="flex gap-3">
+                                            <div className="flex gap-2.5">
                                                 <button
                                                     onClick={() => signIn("google", { callbackUrl: "/lobby" })}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium dark:text-neutral-300 text-neutral-700"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium dark:text-neutral-300 text-neutral-700"
                                                 >
-                                                    <IconBrandGoogle className="w-5 h-5" />
+                                                    <IconBrandGoogle className="w-4.5 h-4.5" />
                                                     Google
                                                 </button>
                                                 <button
                                                     onClick={() => signIn("github", { callbackUrl: "/lobby" })}
-                                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium dark:text-neutral-300 text-neutral-700"
+                                                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border dark:border-white/10 border-black/10 dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium dark:text-neutral-300 text-neutral-700"
                                                 >
-                                                    <IconBrandGithub className="w-5 h-5" />
+                                                    <IconBrandGithub className="w-4.5 h-4.5" />
                                                     GitHub
                                                 </button>
                                             </div>
@@ -499,6 +528,38 @@ export default function LobbyPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Matchmaking Overlay */}
+            {isMatchSearching && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
+                    <div className="flex flex-col items-center gap-6 text-center">
+                        {/* Spinner */}
+                        <div className="relative w-20 h-20">
+                            <div className="absolute inset-0 rounded-full border-4 border-green-500/20" />
+                            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <IconChess className="w-8 h-8 text-green-500" />
+                            </div>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-2">Finding a Match...</h2>
+                            <p className="text-sm text-neutral-400">Looking for a worthy opponent</p>
+                        </div>
+                        {/* Animated dots */}
+                        <div className="flex gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:0ms]" />
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:150ms]" />
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:300ms]" />
+                        </div>
+                        <button
+                            onClick={cancelSearch}
+                            className="px-6 py-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -1,23 +1,38 @@
 'use client'
-import { useEffect, useState, useRef } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useSocket } from "../../hooks/useSocket";
+import { useSocketContext } from "@/app/contexts/SocketContext";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
-import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconLogout } from "@tabler/icons-react";
+import { GAME_OVER, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
+import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle } from "@tabler/icons-react";
+
+type UserProfile = {
+    id: string;
+    username: string;
+    email: string;
+    rating: number;
+    profilePicture: string | null;
+    totalGames: number;
+    wins: number;
+};
+
+type OpponentInfo = {
+    id: string;
+    name: string;
+    rating: number;
+};
 
 export default function GamePage() {
     const { data: session } = useSession();
     const router = useRouter();
-    const socket = useSocket();
+    const { socket, isSearching, matchData, findMatch, clearMatch } = useSocketContext();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [status, setStatus] = useState("");
     const [showStatus, setShowStatus] = useState(false);
-    const [isSearching, setIsSearching] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ sender: string, text: string }[]>([]);
     const [chatInput, setChatInput] = useState("");
@@ -30,12 +45,104 @@ export default function GamePage() {
     const [activeColor, setActiveColor] = useState<'white' | 'black'>('white');
     const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // DB-related state
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
+    const [currentGameId, setCurrentGameId] = useState<string | null>(null);
+    const [ratingChange, setRatingChange] = useState<{ old: number; new: number } | null>(null);
+    const [gameOverDetails, setGameOverDetails] = useState<{ winner: string; reason: string } | null>(null);
+    const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
     const mobileLocalVideoRef = useRef<HTMLVideoElement>(null);
     const mobileRemoteVideoRef = useRef<HTMLVideoElement>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+
+    // Fetch user profile on mount
+    useEffect(() => {
+        async function fetchProfile() {
+            try {
+                const res = await fetch("/api/user/me");
+                if (res.ok) {
+                    const data = await res.json();
+                    setUserProfile(data.user);
+                }
+            } catch (err) {
+                console.error("Failed to fetch user profile:", err);
+            }
+        }
+        if (session?.user) {
+            fetchProfile();
+        }
+    }, [session]);
+
+    // Save game to DB when match starts
+    const createGameInDB = useCallback(async (gameId: string, whiteId: string, blackId: string) => {
+        try {
+            await fetch("/api/game/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    gameId,
+                    whitePlayerId: whiteId,
+                    blackPlayerId: blackId,
+                    timeControl: 600000,
+                }),
+            });
+        } catch (err) {
+            console.error("Failed to create game in DB:", err);
+        }
+    }, []);
+
+    // Save move to DB
+    const saveMoveInDB = useCallback(async (moveData: {
+        gameId: string;
+        from: string;
+        to: string;
+        piece: string;
+        moveNumber: number;
+        notation: string;
+        timeTakenMs: number;
+    }) => {
+        try {
+            await fetch("/api/game/move", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(moveData),
+            });
+        } catch (err) {
+            console.error("Failed to save move in DB:", err);
+        }
+    }, []);
+
+    // End game in DB
+    const endGameInDB = useCallback(async (gameId: string, winner: string, reason: string, pgn: string) => {
+        try {
+            const res = await fetch("/api/game/end", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    gameId,
+                    winner,
+                    reason,
+                    pgn,
+                    whiteTimeLeft: whiteTime,
+                    blackTimeLeft: blackTime,
+                }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                // Show rating change for current player
+                const isWhite = playerColor === "white";
+                const myRating = isWhite ? data.ratings.white : data.ratings.black;
+                setRatingChange(myRating);
+            }
+        } catch (err) {
+            console.error("Failed to end game in DB:", err);
+        }
+    }, [whiteTime, blackTime, playerColor]);
 
     // Sync video streams to both desktop and mobile video elements
     const syncVideoStreams = () => {
@@ -45,82 +152,114 @@ export default function GamePage() {
         }
     };
 
+    // Initialize WebRTC for video chat
+    const initializeWebRTC = useCallback(async (color: string) => {
+        if (!socket) return;
+
+        const pc = new RTCPeerConnection({
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+        });
+        peerConnectionRef.current = pc;
+
+        pc.onicecandidate = (event) => {
+            if (event.candidate && socket) {
+                socket.send(JSON.stringify({ type: WEBRTC_ICE, payload: event.candidate }));
+            }
+        };
+
+        pc.ontrack = (event) => {
+            const stream = event.streams[0];
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = stream;
+            }
+            if (mobileRemoteVideoRef.current) {
+                mobileRemoteVideoRef.current.srcObject = stream;
+            }
+        };
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStreamRef.current = stream;
+            if (localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+            }
+            if (mobileLocalVideoRef.current) {
+                mobileLocalVideoRef.current.srcObject = stream;
+            }
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+        } catch (err) {
+            console.error("Error accessing media devices.", err);
+        }
+
+        if (color === 'white') {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            socket.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
+        }
+    }, [socket]);
+
+    // Initialize game from matchData (lobby matchmaking or "Play Again")
+    useEffect(() => {
+        if (!matchData || !socket) return;
+
+        const newChess = new Chess();
+        setChess(newChess);
+        setBoard(newChess.board());
+        setMoveHistory([]);
+        setWhiteTime(10 * 60 * 1000);
+        setBlackTime(10 * 60 * 1000);
+        setActiveColor('white');
+        setStatus("Match started! Opponent connected.");
+        setIsPlaying(true);
+        setPlayerColor(matchData.color);
+        setGameOverDetails(null);
+        setRatingChange(null);
+        setCurrentGameId(matchData.gameId);
+        setOpponentInfo(matchData.opponent);
+
+        // Create game in DB (white only to avoid duplicate)
+        if (matchData.color === 'white' && userProfile) {
+            createGameInDB(matchData.gameId, userProfile.id, matchData.opponent.id);
+        }
+
+        console.log("Game initialised:", matchData.gameId);
+        initializeWebRTC(matchData.color);
+        clearMatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [matchData]);
+
+    // Socket message handler for gameplay messages
     useEffect(() => {
         if (!socket) {
             return;
         }
 
-        const initializeWebRTC = async (color: string) => {
-            const pc = new RTCPeerConnection({
-                iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-            });
-            peerConnectionRef.current = pc;
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate && socket) {
-                    socket.send(JSON.stringify({ type: WEBRTC_ICE, payload: event.candidate }));
-                }
-            };
-
-            pc.ontrack = (event) => {
-                const stream = event.streams[0];
-                if (remoteVideoRef.current) {
-                    remoteVideoRef.current.srcObject = stream;
-                }
-                if (mobileRemoteVideoRef.current) {
-                    mobileRemoteVideoRef.current.srcObject = stream;
-                }
-            };
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                localStreamRef.current = stream;
-                if (localVideoRef.current) {
-                    localVideoRef.current.srcObject = stream;
-                }
-                if (mobileLocalVideoRef.current) {
-                    mobileLocalVideoRef.current.srcObject = stream;
-                }
-                stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-            } catch (err) {
-                console.error("Error accessing media devices.", err);
-            }
-
-            if (color === 'white') {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                if (socket) {
-                    socket.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
-                }
-            }
-        };
-
-        socket.onmessage = (event) => {
+        const handleMessage = (event: MessageEvent) => {
             const message = JSON.parse(event.data);
             console.log(message);
 
             switch (message.type) {
-                case INIT_GAME: {
-                    setBoard(chess.board());
-                    setMoveHistory([]);
-                    setWhiteTime(10 * 60 * 1000);
-                    setBlackTime(10 * 60 * 1000);
-                    setActiveColor('white');
-                    setStatus("Match started! Opponent connected.");
-                    setIsSearching(false);
-                    setIsPlaying(true);
-                    setPlayerColor(message.payload.color);
-                    console.log("Game initialised");
-                    initializeWebRTC(message.payload.color);
-                    break;
-                }
                 case MOVE: {
                     const move = message.payload;
-                    chess.move(move);
+                    chess.move({ from: move.from, to: move.to });
                     setBoard(chess.board());
                     setMoveHistory(chess.history());
-                    // After opponent moves, it's now our turn — active color flips
                     setActiveColor(chess.turn() === 'w' ? 'white' : 'black');
+
+                    // Save opponent's move to DB
+                    if (move.gameId && move.notation) {
+                        const piece = chess.get(move.to as any)?.type || 'p';
+                        saveMoveInDB({
+                            gameId: move.gameId,
+                            from: move.from,
+                            to: move.to,
+                            piece,
+                            moveNumber: move.moveNumber,
+                            notation: move.notation,
+                            timeTakenMs: move.timeTakenMs || 0,
+                        });
+                    }
+
                     console.log("Move made");
                     break;
                 }
@@ -130,9 +269,16 @@ export default function GamePage() {
                     break;
                 }
                 case GAME_OVER: {
-                    setStatus(`Game Over! ${message.payload.winner} won${message.payload.reason ? ` (${message.payload.reason})` : ''}.`);
+                    const { winner, reason, gameId } = message.payload;
+                    setGameOverDetails({ winner, reason });
+                    setStatus(`Game Over! ${winner} won${reason ? ` (${reason})` : ''}.`);
                     setIsPlaying(false);
-                    alert(`${message.payload.winner} wins${message.payload.reason ? ` by ${message.payload.reason}` : ''}!`);
+
+                    // End game in DB
+                    if (gameId) {
+                        endGameInDB(gameId, winner, reason, chess.pgn());
+                    }
+
                     console.log("Game Over");
                     break;
                 }
@@ -167,8 +313,11 @@ export default function GamePage() {
                     break;
                 }
             }
-        }
-    }, [socket, chess])
+        };
+
+        socket.addEventListener('message', handleMessage);
+        return () => socket.removeEventListener('message', handleMessage);
+    }, [socket, chess, userProfile, createGameInDB, saveMoveInDB, endGameInDB])
 
     useEffect(() => {
         if (status) {
@@ -212,20 +361,13 @@ export default function GamePage() {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
-    if (!socket) {
-        return (
-            <div className="h-screen w-screen flex justify-center items-center dark:bg-black bg-neutral-200">
-                <span className="text-xl font-medium dark:text-neutral-300">Connecting to server...</span>
-            </div>
-        )
-    }
-
     function handlePlay() {
-        if (!socket || isSearching || isPlaying) return
-        socket.send(JSON.stringify({
-            type: INIT_GAME
-        }))
-        setIsSearching(true);
+        if (isSearching || isPlaying) return;
+        findMatch({
+            userId: userProfile?.id || (session?.user as any)?.id || 'anonymous',
+            name: userProfile?.username || session?.user?.name || 'Guest',
+            rating: userProfile?.rating || 500,
+        });
         setStatus("Searching for an opponent...");
     }
 
@@ -234,6 +376,12 @@ export default function GamePage() {
     const yourTime = playerColor === 'white' ? whiteTime : blackTime;
     const isOpponentActive = (playerColor === 'white' && activeColor === 'black') || (playerColor === 'black' && activeColor === 'white');
     const isYourActive = !isOpponentActive;
+
+    // Real player/opponent display info
+    const yourName = userProfile?.username || session?.user?.name || 'You';
+    const yourRating = userProfile?.rating ?? 500;
+    const opponentName = opponentInfo?.name || 'Opponent';
+    const opponentRating = opponentInfo?.rating ?? '—';
 
     // Pair moves into rows: [["e4","e5"], ["Nf3","Nc6"], ...]
     const movePairs: [string, string | undefined][] = [];
@@ -266,6 +414,91 @@ export default function GamePage() {
                 <span className="font-bold text-sm tracking-wide text-green-400 drop-shadow-md">{status}</span>
             </div>
 
+            {/* Game Over Overlay */}
+            {gameOverDetails && !isPlaying && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="dark:bg-neutral-900 bg-white rounded-2xl border dark:border-white/10 border-black/10 p-6 sm:p-8 max-w-sm w-full mx-4 shadow-2xl text-center">
+                        <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+                            <IconSwords className="w-8 h-8 text-green-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold dark:text-white text-neutral-900 mb-1">Game Over</h2>
+                        <p className="text-sm dark:text-neutral-400 text-neutral-600 mb-4">
+                            {gameOverDetails.winner === playerColor
+                                ? "You won!"
+                                : `${gameOverDetails.winner} wins`}
+                            {gameOverDetails.reason && ` by ${gameOverDetails.reason}`}
+                        </p>
+
+                        {ratingChange && (
+                            <div className="dark:bg-neutral-800/60 bg-neutral-100 rounded-xl p-3 mb-5 border dark:border-white/5 border-black/5">
+                                <p className="text-xs dark:text-neutral-500 text-neutral-400 uppercase tracking-wider mb-1">Rating Change</p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className="text-lg font-mono dark:text-neutral-400 text-neutral-500">{ratingChange.old}</span>
+                                    <span className="dark:text-neutral-600 text-neutral-300">→</span>
+                                    <span className={`text-lg font-mono font-bold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'dark:text-white text-neutral-900'}`}>
+                                        {ratingChange.new}
+                                    </span>
+                                    <span className={`text-sm font-semibold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'dark:text-neutral-400 text-neutral-500'}`}>
+                                        ({ratingChange.new > ratingChange.old ? '+' : ''}{ratingChange.new - ratingChange.old})
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => {
+                                    setGameOverDetails(null);
+                                    setRatingChange(null);
+                                    handlePlay();
+                                }}
+                                className="w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors"
+                            >
+                                Play Again
+                            </button>
+                            <button
+                                onClick={() => router.push('/lobby')}
+                                className="w-full px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:text-white text-neutral-900 font-semibold text-sm dark:hover:bg-white/5 hover:bg-black/5 transition-colors"
+                            >
+                                Back to Lobby
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Quit Match Confirmation */}
+            {showQuitConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="dark:bg-neutral-900 bg-white rounded-2xl border dark:border-white/10 border-black/10 p-6 sm:p-8 max-w-sm w-full mx-4 shadow-2xl text-center">
+                        <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+                            <IconAlertTriangle className="w-7 h-7 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-bold dark:text-white text-neutral-900 mb-1">Quit Match?</h2>
+                        <p className="text-sm dark:text-neutral-400 text-neutral-600 mb-5">
+                            You have a game in progress. Leaving will count as a loss.
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => setShowQuitConfirm(false)}
+                                className="w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors"
+                            >
+                                Continue Playing
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowQuitConfirm(false);
+                                    router.push('/lobby');
+                                }}
+                                className="w-full px-4 py-3 rounded-xl border dark:border-red-500/30 border-red-400/30 dark:text-red-400 text-red-500 font-semibold text-sm dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                            >
+                                Quit Match
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Main Layout Container */}
             <div className="flex flex-col h-[100dvh]">
 
@@ -286,11 +519,17 @@ export default function GamePage() {
                             </span>
                         </div>
                         <button
-                            onClick={() => { signOut({ redirect: false }); router.push('/'); }}
+                            onClick={() => {
+                                if (isPlaying) {
+                                    setShowQuitConfirm(true);
+                                } else {
+                                    router.push('/lobby');
+                                }
+                            }}
                             className="p-1.5 rounded-lg dark:hover:bg-white/10 hover:bg-black/5 transition-colors"
-                            title="Exit"
+                            title="Back to Lobby"
                         >
-                            <IconLogout className="w-5 h-5 dark:text-neutral-400 text-neutral-500" />
+                            <IconArrowLeft className="w-5 h-5 dark:text-neutral-400 text-neutral-500" />
                         </button>
                     </div>
                 </nav>
@@ -396,8 +635,8 @@ export default function GamePage() {
                                         <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 dark:text-neutral-400 text-neutral-500" />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold dark:text-white/90 text-neutral-800 text-xs sm:text-sm lg:text-sm">Opponent</span>
-                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">Rating: 1200</span>
+                                        <span className="font-bold dark:text-white/90 text-neutral-800 text-xs sm:text-sm lg:text-sm">{opponentName}</span>
+                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">Rating: {opponentRating}</span>
                                     </div>
                                 </div>
                                 <div className={`dark:bg-neutral-800 bg-neutral-200 w-16 h-6 sm:w-24 sm:h-8 lg:w-28 lg:h-9 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isOpponentActive && isPlaying ? 'border-red-500/30 bg-red-500/10' : 'dark:border-white/5 border-black/10'}`}>
@@ -407,18 +646,44 @@ export default function GamePage() {
 
                             {/* The Board */}
                             <div className="w-full flex items-center justify-center">
-                                <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => { setMoveHistory(chess.history()); setActiveColor(chess.turn() === 'w' ? 'white' : 'black'); }} />
+                                <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={(moveInfo) => {
+                                    setMoveHistory(chess.history());
+                                    setActiveColor(chess.turn() === 'w' ? 'white' : 'black');
+                                    // Save our own move to DB
+                                    if (currentGameId && moveInfo) {
+                                        saveMoveInDB({
+                                            gameId: currentGameId,
+                                            from: moveInfo.from,
+                                            to: moveInfo.to,
+                                            piece: moveInfo.piece,
+                                            moveNumber: chess.history().length,
+                                            notation: moveInfo.notation,
+                                            timeTakenMs: 0, // Server tracks actual time
+                                        });
+                                    }
+                                }} />
                             </div>
 
                             {/* Your Info */}
                             <div className="w-full flex items-center justify-between">
                                 <div className="flex items-center gap-2 lg:gap-3">
                                     <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30 shadow-md">
-                                        <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 text-green-400" />
+                                        {session?.user?.image ? (
+                                            <img src={session.user.image} alt="" className="w-full h-full rounded-lg object-cover" />
+                                        ) : (
+                                            <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 text-green-400" />
+                                        )}
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-sm">You</span>
-                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">Rating: 1200</span>
+                                        <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-sm">{yourName}</span>
+                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">
+                                            Rating: {yourRating}
+                                            {ratingChange && (
+                                                <span className={`ml-1 font-semibold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'text-neutral-400'}`}>
+                                                    ({ratingChange.new > ratingChange.old ? '+' : ''}{ratingChange.new - ratingChange.old})
+                                                </span>
+                                            )}
+                                        </span>
                                     </div>
                                 </div>
                                 <div className={`dark:bg-neutral-800 bg-neutral-200 w-16 h-6 sm:w-24 sm:h-8 lg:w-28 lg:h-9 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isYourActive && isPlaying ? 'border-green-500/30 bg-green-500/10' : 'dark:border-white/5 border-black/10'}`}>

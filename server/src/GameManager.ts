@@ -1,10 +1,10 @@
 import { WebSocket } from "ws";
 import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_COUNT } from "./messages";
-import { Game } from "./Game";
+import { Game, PlayerInfo } from "./Game";
 
 export class GameManager {
     private games: Game[];
-    private pendingUser: WebSocket | null;
+    private pendingUser: { socket: WebSocket; info: PlayerInfo } | null;
     private users: WebSocket[];
 
     constructor() {
@@ -23,9 +23,13 @@ export class GameManager {
         this.users = this.users.filter((user) => {
             return user != socket;
         })
-        this.broadcastPlayerCount();
 
-        // stop cuz user has left
+        // If the pending user disconnects, clear them
+        if (this.pendingUser && this.pendingUser.socket === socket) {
+            this.pendingUser = null;
+        }
+
+        this.broadcastPlayerCount();
     }
 
     private broadcastPlayerCount() {
@@ -40,15 +44,15 @@ export class GameManager {
         });
     }
 
-    private startGame(socket: WebSocket) {
+    private startGame(socket: WebSocket, playerInfo: PlayerInfo) {
         // check if there is a pending user
-        if (this.pendingUser) {
+        if (this.pendingUser && this.pendingUser.socket !== socket) {
             // start the game
-            const game = new Game(this.pendingUser, socket);
+            const game = new Game(this.pendingUser.socket, socket, this.pendingUser.info, playerInfo);
             this.games.push(game);
             this.pendingUser = null;
         } else {
-            this.pendingUser = socket;
+            this.pendingUser = { socket, info: playerInfo };
         }
     }
 
@@ -73,7 +77,12 @@ export class GameManager {
             const message = JSON.parse(data.toString());
 
             if (message.type === INIT_GAME) {
-                this.startGame(socket);
+                const playerInfo: PlayerInfo = {
+                    userId: message.payload?.userId || 'anonymous',
+                    name: message.payload?.name || 'Guest',
+                    rating: message.payload?.rating || 500,
+                };
+                this.startGame(socket, playerInfo);
             }
 
             if (message.type === MOVE) {

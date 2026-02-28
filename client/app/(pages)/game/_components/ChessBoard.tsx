@@ -40,7 +40,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
     } | null)[][];
     socket: WebSocket;
     playerColor: string | null;
-    onMove?: () => void;
+    onMove?: (moveInfo: { from: string; to: string; piece: string; notation: string }) => void;
 }) {
     const [from, setFrom] = useState<null | Square>(null);
     const [legalMoves, setLegalMoves] = useState<Square[]>([]);
@@ -83,6 +83,10 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
         try {
             chess.move({ from: fromSq, to: toSq });
 
+            // Get the last move notation from history
+            const history = chess.history();
+            const notation = history[history.length - 1] || '';
+
             setAnimating({
                 type: piece.type,
                 color: piece.color,
@@ -100,7 +104,12 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
             setTimeout(() => {
                 setBoard(chess.board());
                 setAnimating(null);
-                onMove?.();
+                onMove?.({
+                    from: fromSq,
+                    to: toSq,
+                    piece: piece.type,
+                    notation,
+                });
             }, 200);
 
             setFrom(null);

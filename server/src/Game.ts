@@ -1,12 +1,22 @@
 import { WebSocket } from "ws";
 import { Chess } from 'chess.js';
 import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "./messages";
+import { randomUUID } from "crypto";
 
 const INITIAL_TIME = 10 * 60 * 1000; // 10 minutes in ms
+
+export type PlayerInfo = {
+    userId: string;
+    name: string;
+    rating: number;
+};
 
 export class Game {
     public player1: WebSocket;
     public player2: WebSocket;
+    public player1Info: PlayerInfo;
+    public player2Info: PlayerInfo;
+    public gameId: string;
     private board: Chess;
     private startTime: Date;
     private moveCount: number;
@@ -16,9 +26,12 @@ export class Game {
     private timerInterval: ReturnType<typeof setInterval> | null;
     private gameOver: boolean;
 
-    constructor(player1: WebSocket, player2: WebSocket) {
+    constructor(player1: WebSocket, player2: WebSocket, player1Info: PlayerInfo, player2Info: PlayerInfo) {
         this.player1 = player1;
         this.player2 = player2;
+        this.player1Info = player1Info;
+        this.player2Info = player2Info;
+        this.gameId = randomUUID();
         this.board = new Chess;
         this.startTime = new Date();
         this.moveCount = 1;
@@ -28,18 +41,30 @@ export class Game {
         this.timerInterval = null;
         this.gameOver = false;
 
-        // sending start messages
+        // sending start messages with opponent info
         this.player1.send(JSON.stringify({
             type: INIT_GAME,
             payload: {
-                color: "white"
+                color: "white",
+                gameId: this.gameId,
+                opponent: {
+                    id: player2Info.userId,
+                    name: player2Info.name,
+                    rating: player2Info.rating,
+                }
             }
         }))
 
         this.player2.send(JSON.stringify({
             type: INIT_GAME,
             payload: {
-                color: "black"
+                color: "black",
+                gameId: this.gameId,
+                opponent: {
+                    id: player1Info.userId,
+                    name: player1Info.name,
+                    rating: player1Info.rating,
+                }
             }
         }))
 
@@ -94,7 +119,7 @@ export class Game {
             this.timerInterval = null;
         }
         this.broadcastTime();
-        const payload = { winner, reason };
+        const payload = { winner, reason, gameId: this.gameId };
         this.player1.send(JSON.stringify({ type: GAME_OVER, payload }));
         this.player2.send(JSON.stringify({ type: GAME_OVER, payload }));
     }
@@ -168,16 +193,25 @@ export class Game {
             return;
         }
 
-        // Send move to opponent
+        // Send move to opponent with move metadata
+        const moveNotation = this.board.history().slice(-1)[0] || '';
+        const movePayload = {
+            ...move,
+            moveNumber: this.moveCount,
+            notation: moveNotation,
+            timeTakenMs: elapsed,
+            gameId: this.gameId,
+        };
+
         if (this.moveCount % 2 !== 0) {
             this.player2.send(JSON.stringify({
                 type: MOVE,
-                payload: move
+                payload: movePayload
             }))
         } else {
             this.player1.send(JSON.stringify({
                 type: MOVE,
-                payload: move
+                payload: movePayload
             }))
         }
         this.moveCount++;
