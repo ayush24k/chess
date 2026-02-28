@@ -1,24 +1,49 @@
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google";
 import GitHubProvider from "next-auth/providers/github";
-import { signIn } from "next-auth/react";
+import bcrypt from "bcrypt";
+import prismaClient from "@/services/primsaClient";
 
 export const nextAuthConfig = {
     providers: [
         CredentialsProvider({
             name: "Credentials",
             credentials: {
-                username: { label: "email", type: "text", placeholder: "email" },
-                password: { label: "password", type: "password", placeholder: "password" },
+                identifier: { label: "Email or Username", type: "text", placeholder: "email or username" },
+                password: { label: "Password", type: "password", placeholder: "password" },
             },
-            async authorize(credentials: any) {
 
-                // validations here
+            async authorize(credentials: any): Promise<any> {
+                const { identifier, password } = credentials;
+
+                if (!identifier || !password) {
+                    throw new Error('Missing credentials');
+                }
+
+                const isEmail = identifier.includes('@');
+
+                const user = await prismaClient.user.findUnique({
+                    where: isEmail ? { email: identifier } : { username: identifier },
+                });
+
+                if (!user) {
+                    throw new Error('User not found');
+                }
+
+                if (!user.password) {
+                    throw new Error('This account uses social login');
+                }
+
+                const isPasswordValid = await bcrypt.compare(password, user.password);
+
+                if (!isPasswordValid) {
+                    throw new Error('Invalid password');
+                }
 
                 return {
-                    id: "1",
-                    name: "ayush",
-                    email: "hello@gmai.com"
+                    id: user.id,
+                    name: user.username,
+                    email: user.email,
                 }
             }
         }),
@@ -36,11 +61,25 @@ export const nextAuthConfig = {
 
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
-        async signIn({ user }: any) {
+        
+        async signIn({ user, account }: any) {
+            
+            if (account.provider !== 'credentials') {
+                await prismaClient.user.upsert({
+                    where: { email: user.email },
+                    update: {
+                        profilePicture: user.image || undefined,
+                    },
+                    create: {
+                        email: user.email,
+                        username: user.name || user.email.split('@')[0],
+                        password: '',  // OAuth users don't use password
+                        profilePicture: user.image || null,
+                    },
+                });
+            }
 
-            // validate and store the user in db if new entry
-            console.log(user)
-            return user;
+            return true;
         },
 
         async jwt({ token, user }: any) {

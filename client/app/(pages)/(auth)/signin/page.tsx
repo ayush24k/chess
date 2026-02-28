@@ -24,10 +24,10 @@ export default function SignIn() {
 
                     <form className="flex flex-col gap-4 text-left">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Email</label>
+                            <label className="block text-sm font-medium mb-1">Email or Username</label>
                             <input
-                                type="email"
-                                placeholder="pawn@example.com"
+                                type="text"
+                                placeholder="pawn@example.com or grandmaster99"
                                 className="w-full px-4 py-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
                             />
                         </div>

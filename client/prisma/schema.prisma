@@ -16,7 +16,121 @@ datasource db {
 model User {
   id String @id @default(uuid())
   email String @unique @db.VarChar(255)
-  username String? @db.VarChar(45)
-  password String
+  username String @unique @db.VarChar(255)
+  password String? @db.VarChar(255)
   profilePicture String?
+  rating Int @default(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // realtions
+  gameAsWhite Game[] @relation("whitePlayer")
+  gameAsBlack Game[] @relation("blackPlayer")
+  chatMessages ChatMessage[]
+  sentFriendRequests FriendRequest[] @relation("sentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("receivedFriendRequests")
+
+  @@index([email])
+  @@index([username])
+}
+
+enum GameStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum GameResult {
+  WHITE_WIN
+  BLACK_WIN
+  DRAW
+  STALEMATE
+  TIMEOUT
+}
+
+model Game {
+  id String @id @default(uuid())
+  whitePlayerId String
+  blackPlayerId String
+  status GameStatus @default(WAITING)
+  result GameResult?
+  TimeControl Int @default(600000)
+  whitePlayerTimeLeft Int @default(600000)
+  blackPlayerTimeLeft Int @default(600000)
+  pgn String?
+  startedAt DateTime @default(now())
+  endedAt DateTime?
+
+
+  // relations
+  whitePlayer User @relation("whitePlayer", fields: [whitePlayerId], references: [id])
+  blackPlayer User @relation("blackPlayer", fields: [blackPlayerId], references: [id])
+
+  moves Move[]
+  chatMessages ChatMessage[]
+
+  @@index([whitePlayerId])
+  @@index([blackPlayerId])
+  @@index([status])
+}
+
+model Move {
+  id          String   @id @default(uuid())
+  gameId      String
+  from        String   @db.VarChar(5)   // e.g. "e2"
+  to          String   @db.VarChar(5)   // e.g. "e4"
+  piece       String   @db.VarChar(1)   // e.g. "p", "N", "Q"
+  moveNumber  Int
+  notation    String   @db.VarChar(10)  // SAN e.g. "Nf3", "O-O"
+  timeTakenMs Int                        // time spent on this move
+  createdAt   DateTime @default(now())
+
+  // Relations
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([gameId, moveNumber])
+}
+
+// ─── ChatMessage ───────────────────────────────────────
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  gameId    String
+  senderId  String
+  message   String   @db.VarChar(500)
+  createdAt DateTime @default(now())
+
+  // Relations
+  game   Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id])
+
+  @@index([gameId])
+  @@index([senderId])
+}
+
+// ─── Friendship ────────────────────────────────────────
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
+model FriendRequest {
+  id          String           @id @default(uuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  // Relations
+  requester User @relation("sentFriendRequests", fields: [requesterId], references: [id])
+  addressee User @relation("receivedFriendRequests", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
 }

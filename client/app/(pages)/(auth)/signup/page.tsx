@@ -6,7 +6,7 @@ import { IconBrandGithub, IconBrandGoogle } from "@tabler/icons-react";
 export default function SignUp() {
     return (
         <section
-            className="relative min-h-screen overflow-hidden dark:bg-black bg-neutral-200"
+            className="relative flex flex-col min-h-screen overflow-hidden dark:bg-black bg-neutral-200"
             style={{
                 backgroundImage: `radial-gradient(circle at 0.5px 0.5px, rgba(255,255,255,0.1) 0.9px, transparent 0)`,
                 backgroundSize: "8px 8px",
@@ -15,7 +15,7 @@ export default function SignUp() {
         >
             <Navbar />
 
-            <div className="relative z-10 flex min-h-screen items-center justify-center py-20 px-4">
+            <div className="relative z-10 flex flex-1 items-center justify-center pt-20 py-10 px-4">
                 <div className="w-full max-w-md p-8 rounded-2xl md:rounded-3xl backdrop-blur-md dark:bg-black/60 bg-white/60 shadow-2xl border-[1px] dark:border-white/20 border-black/20 text-center">
                     <h1 className="text-3xl font-bold tracking-tight mb-2">Create an Account</h1>
                     <p className="text-sm dark:text-neutral-400 text-neutral-600 mb-8">
