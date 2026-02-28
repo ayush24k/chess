@@ -38,7 +38,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
         type: PieceSymbol;
         color: Color;
     } | null)[][];
-    socket: WebSocket;
+    socket: WebSocket | null;
     playerColor: string | null;
     onMove?: (moveInfo: { from: string; to: string; piece: string; notation: string }) => void;
 }) {
@@ -96,7 +96,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                 toCol: visualToCol,
             });
 
-            socket.send(JSON.stringify({
+            socket?.send(JSON.stringify({
                 type: MOVE,
                 payload: { move: { from: fromSq, to: toSq } }
             }));
