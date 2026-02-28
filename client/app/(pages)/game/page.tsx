@@ -1,13 +1,17 @@
 'use client'
 import { useEffect, useState, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useSocket } from "../../hooks/useSocket";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
 import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
-import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords } from "@tabler/icons-react";
+import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconLogout } from "@tabler/icons-react";
 
 export default function GamePage() {
+    const { data: session } = useSession();
+    const router = useRouter();
     const socket = useSocket();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
@@ -262,184 +266,227 @@ export default function GamePage() {
                 <span className="font-bold text-sm tracking-wide text-green-400 drop-shadow-md">{status}</span>
             </div>
 
-            <div className="game-grid max-w-[1400px] mx-auto relative z-10">
+            {/* Main Layout Container */}
+            <div className="flex flex-col h-[100dvh]">
 
-                {/* Opponent Camera — desktop only grid item */}
-                <div className="game-cam-opp bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center relative shadow-xl overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-50 group-hover:opacity-80 transition-opacity z-0"></div>
-                    {!isPlaying && (
-                        <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
-                            <IconVideo className="w-8 h-8 opacity-50" />
-                            <span>Opponent</span>
+                {/* ===== Navbar ===== */}
+                <nav className="flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 dark:bg-neutral-900/80 bg-white/80 backdrop-blur-md border-b dark:border-white/10 border-black/10 z-30 shrink-0">
+                    <span className="font-bold text-base sm:text-lg tracking-tight dark:text-white text-neutral-900">Chess</span>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            {session?.user?.image ? (
+                                <img src={session.user.image} alt="avatar" className="w-7 h-7 rounded-full border dark:border-white/20 border-black/10 object-cover" />
+                            ) : (
+                                <div className="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center border dark:border-white/10 border-black/10">
+                                    <IconUser className="w-4 h-4 text-green-400" />
+                                </div>
+                            )}
+                            <span className="text-sm font-medium dark:text-neutral-300 text-neutral-700 hidden sm:block">
+                                {session?.user?.name ?? 'Guest'}
+                            </span>
                         </div>
-                    )}
-                    <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10" />
-                </div>
-
-                {/* Your Camera — desktop only grid item */}
-                <div className="game-cam-you bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-center relative shadow-xl overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-50 group-hover:opacity-80 transition-opacity z-0"></div>
-                    {!isPlaying && (
-                        <div className="text-neutral-500 font-medium z-10 flex flex-col items-center gap-2">
-                            <IconVideo className="w-8 h-8 opacity-50" />
-                            <span>You</span>
-                        </div>
-                    )}
-                    <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-10 scale-x-[-1]" />
-                </div>
-
-                {/* Game History — desktop only grid item */}
-                <div className="game-history bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex-col shadow-xl overflow-hidden">
-                    <div className="flex p-4 border-b border-white/10 font-medium text-white/90 bg-white/5 justify-between items-center">
-                        <span>Game History</span>
-                        <span className="text-xs text-neutral-500">{moveHistory.length} moves</span>
-                    </div>
-                    <div className="flex-1 p-4 overflow-y-auto min-h-0">
-                        {movePairs.length === 0 ? (
-                            <div className="flex flex-col gap-2 text-sm text-neutral-400">
-                                <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-sm">
-                                    <span>Waiting for moves...</span>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-1">
-                                {movePairs.map(([white, black], idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${
-                                            idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'bg-white/5' : ''
-                                        }`}
-                                    >
-                                        <span className="w-6 text-neutral-600 font-mono text-xs">{idx + 1}.</span>
-                                        <span className="flex-1 text-white/90 font-medium font-mono">{white}</span>
-                                        <span className="flex-1 text-white/70 font-mono">{black ?? '...'}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Chess Board Area */}
-                <div className="game-board bg-neutral-900/60 backdrop-blur-md rounded-xl sm:rounded-2xl lg:rounded-3xl border border-white/10 shadow-2xl flex flex-col items-center justify-center px-2 py-1 sm:px-4 sm:py-3 lg:p-4 relative overflow-hidden">
-                    {/* Glow effects (desktop only) */}
-                    <div className="hidden lg:block absolute top-1/4 left-1/4 -translate-x-1/2 w-[300px] h-[300px] bg-green-500 rounded-full blur-[200px] opacity-20 pointer-events-none"></div>
-                    <div className="hidden lg:block absolute bottom-1/4 right-1/4 translate-x-1/4 w-[300px] h-[300px] bg-green-400 rounded-full blur-[200px] opacity-10 pointer-events-none"></div>
-
-                    <div className="game-board-inner flex flex-col gap-1 sm:gap-2 lg:gap-4 w-full mx-auto z-10">
-                        {/* Mobile: Cameras side by side on top */}
-                        <div className="lg:hidden flex gap-2 sm:gap-3 w-full">
-                            <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
-                                <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
-                                    <span className="text-[8px] sm:text-[10px] text-neutral-300 font-medium">Opponent</span>
-                                </div>
-                                {!isPlaying && (
-                                    <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
-                                )}
-                                <video ref={mobileRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
-                                <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
-                                    <span className="text-[8px] sm:text-[10px] text-green-400 font-medium">You</span>
-                                </div>
-                                {!isPlaying && (
-                                    <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
-                                )}
-                                <video ref={mobileLocalVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
-                            </div>
-                        </div>
-
-                        {/* Opponent Info */}
-                        <div className="w-full flex items-center justify-between">
-                            <div className="flex items-center gap-2 lg:gap-3">
-                                <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 bg-neutral-800 rounded-lg flex items-center justify-center border border-white/10 shadow-md">
-                                    <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-neutral-400" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-white/90 text-xs sm:text-sm lg:text-base">Opponent</span>
-                                    <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
-                                </div>
-                            </div>
-                            <div className={`bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isOpponentActive && isPlaying ? 'border-red-500/30 bg-red-500/10' : 'border-white/5'}`}>
-                                <span className={`font-mono text-xs sm:text-sm lg:text-lg font-semibold ${opponentTime <= 30000 && isPlaying ? 'text-red-400' : 'text-white/90'}`}>{formatTime(opponentTime)}</span>
-                            </div>
-                        </div>
-
-                        {/* The Board */}
-                        <div className="w-full flex items-center justify-center">
-                            <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => { setMoveHistory(chess.history()); setActiveColor(chess.turn() === 'w' ? 'white' : 'black'); }} />
-                        </div>
-
-                        {/* Your Info */}
-                        <div className="w-full flex items-center justify-between">
-                            <div className="flex items-center gap-2 lg:gap-3">
-                                <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-12 lg:h-12 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30 shadow-md">
-                                    <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-green-400" />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-base">You</span>
-                                    <span className="text-[10px] sm:text-xs lg:text-xs text-neutral-500">Rating: 1200</span>
-                                </div>
-                            </div>
-                            <div className={`bg-neutral-800 w-16 h-6 sm:w-24 sm:h-8 lg:w-32 lg:h-10 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isYourActive && isPlaying ? 'border-green-500/30 bg-green-500/10' : 'border-white/5'}`}>
-                                <span className={`font-mono text-xs sm:text-sm lg:text-lg font-semibold ${yourTime <= 30000 && isPlaying ? 'text-red-400' : 'text-green-400'}`}>{formatTime(yourTime)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Chat — Desktop: inline in grid / Mobile: hidden (use floating button) */}
-                <div className="game-chat hidden lg:flex bg-neutral-900/80 backdrop-blur-md rounded-2xl border border-white/10 flex-col shadow-xl overflow-hidden">
-                    <div className="p-4 border-b border-white/10 font-medium text-white/90 bg-white/5">
-                        Live Match Chat
-                    </div>
-                    <div className="flex-1 p-4 flex flex-col gap-2 text-sm overflow-y-auto min-h-0">
-                        {!isPlaying && chatMessages.length === 0 ? (
-                            <div className="flex-1 flex items-center justify-center text-neutral-500">
-                                <p className="bg-black/40 px-4 py-2 rounded-full border border-white/5 text-sm">Waiting for match...</p>
-                            </div>
-                        ) : (
-                            chatMessages.map((msg, idx) => (
-                                <div key={idx} className={`max-w-[85%] px-3 py-2 rounded-xl text-white/90 text-sm ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm' : 'bg-neutral-800 self-start rounded-tl-sm border border-white/10'}`}>
-                                    <span className="text-xs opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : 'Opponent'}</span>
-                                    {msg.text}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="p-3 border-t border-white/10 bg-white/5 flex gap-2">
-                        <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                            placeholder="Message..."
-                            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-green-500/50 transition-colors placeholder:text-neutral-600 disabled:opacity-50"
-                            disabled={!isPlaying}
-                        />
                         <button
-                            onClick={handleSendMessage}
-                            className="p-2 bg-green-500 text-black rounded-xl transition-colors disabled:opacity-50 hover:bg-green-400 focus:outline-none"
-                            disabled={!isPlaying || !chatInput.trim()}
+                            onClick={() => { signOut({ redirect: false }); router.push('/'); }}
+                            className="p-1.5 rounded-lg dark:hover:bg-white/10 hover:bg-black/5 transition-colors"
+                            title="Exit"
                         >
-                            <IconSend className="w-5 h-5" />
+                            <IconLogout className="w-5 h-5 dark:text-neutral-400 text-neutral-500" />
                         </button>
                     </div>
-                </div>
+                </nav>
 
-                {/* Controls / Play Button — desktop only */}
-                <div className="game-controls items-end">
-                    <Button
-                        onClick={handlePlay}
-                        disabled={isSearching || isPlaying}
-                        className="w-full bg-green-500 hover:bg-green-400 text-neutral-900 font-bold py-4 rounded-2xl transition-all shadow-xl hover:shadow-green-500/20 text-lg tracking-wide uppercase"
-                    >
-                        {isSearching ? "Searching..." : isPlaying ? "In Progress" : "Find Match"}
-                    </Button>
+                {/* ===== Unified Card ===== */}
+                <div className="flex-1 dark:bg-neutral-900/60 bg-white/60 backdrop-blur-sm overflow-hidden flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)] relative">
+
+                    {/* ─── Left Panel: Video & Game History (Desktop only) ─── */}
+                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-r dark:border-white/5 border-black/5">
+                        {/* Opponent video */}
+                        <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 relative overflow-hidden">
+                            {!isPlaying && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 z-0">
+                                    <IconUser className="w-8 h-8 dark:text-neutral-600 text-neutral-400" />
+                                    <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">Opponent</span>
+                                </div>
+                            )}
+                            <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10" />
+                            {isPlaying && (
+                                <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md dark:bg-black/60 bg-white/70 text-[9px] font-semibold dark:text-red-400 text-red-500 z-20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                    LIVE
+                                </div>
+                            )}
+                        </div>
+                        {/* Your video */}
+                        <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 relative overflow-hidden">
+                            {!isPlaying && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 z-0">
+                                    <IconVideo className="w-8 h-8 dark:text-neutral-600 text-neutral-400" />
+                                    <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">You</span>
+                                </div>
+                            )}
+                            <video ref={localVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover z-10 scale-x-[-1]" />
+                        </div>
+                        {/* Game History */}
+                        <div className="flex-1 rounded-lg dark:bg-neutral-800/60 bg-neutral-200/60 flex flex-col overflow-hidden min-h-0">
+                            <div className="flex p-2.5 border-b dark:border-white/5 border-black/5 items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                    <IconHistory className="w-3 h-3 dark:text-neutral-500 text-neutral-400" />
+                                    <span className="text-[9px] font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400">Moves</span>
+                                </div>
+                                <span className="text-[9px] dark:text-neutral-600 text-neutral-400">{moveHistory.length}</span>
+                            </div>
+                            <div className="flex-1 p-2 overflow-y-auto min-h-0">
+                                {movePairs.length === 0 ? (
+                                    <div className="px-2 py-1 dark:bg-white/5 bg-black/5 rounded-md dark:text-neutral-500 text-neutral-400 italic text-[10px]">
+                                        Waiting for moves...
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-0.5">
+                                        {movePairs.map(([white, black], idx) => (
+                                            <div
+                                                key={idx}
+                                                className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] ${
+                                                    idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'dark:bg-white/5 bg-black/5' : ''
+                                                }`}
+                                            >
+                                                <span className="w-4 dark:text-neutral-600 text-neutral-400 font-mono text-[9px]">{idx + 1}.</span>
+                                                <span className="flex-1 dark:text-white/90 text-neutral-800 font-medium font-mono">{white}</span>
+                                                <span className="flex-1 dark:text-white/70 text-neutral-600 font-mono">{black ?? '...'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ─── Center Panel: Board ─── */}
+                    <div className="flex-1 flex flex-col items-center justify-center px-2 py-1 sm:px-4 sm:py-3 lg:p-6 gap-1 sm:gap-2 lg:gap-4 min-h-0 relative overflow-hidden">
+                        {/* Glow effects (desktop only) */}
+                        <div className="hidden lg:block absolute top-1/4 left-1/4 -translate-x-1/2 w-[300px] h-[300px] bg-green-500 rounded-full blur-[200px] opacity-20 pointer-events-none"></div>
+                        <div className="hidden lg:block absolute bottom-1/4 right-1/4 translate-x-1/4 w-[300px] h-[300px] bg-green-400 rounded-full blur-[200px] opacity-10 pointer-events-none"></div>
+
+                        <div className="game-board-inner flex flex-col gap-1 sm:gap-2 lg:gap-4 w-full mx-auto z-10">
+                            {/* Mobile: Cameras side by side on top */}
+                            <div className="lg:hidden flex gap-2 sm:gap-3 w-full">
+                                <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
+                                    <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
+                                        <span className="text-[8px] sm:text-[10px] text-neutral-300 font-medium">Opponent</span>
+                                    </div>
+                                    {!isPlaying && (
+                                        <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
+                                    )}
+                                    <video ref={mobileRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
+                                    <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
+                                        <span className="text-[8px] sm:text-[10px] text-green-400 font-medium">You</span>
+                                    </div>
+                                    {!isPlaying && (
+                                        <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
+                                    )}
+                                    <video ref={mobileLocalVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
+                                </div>
+                            </div>
+
+                            {/* Opponent Info */}
+                            <div className="w-full flex items-center justify-between">
+                                <div className="flex items-center gap-2 lg:gap-3">
+                                    <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 dark:bg-neutral-800 bg-neutral-200 rounded-lg flex items-center justify-center border dark:border-white/10 border-black/10 shadow-md">
+                                        <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 dark:text-neutral-400 text-neutral-500" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold dark:text-white/90 text-neutral-800 text-xs sm:text-sm lg:text-sm">Opponent</span>
+                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">Rating: 1200</span>
+                                    </div>
+                                </div>
+                                <div className={`dark:bg-neutral-800 bg-neutral-200 w-16 h-6 sm:w-24 sm:h-8 lg:w-28 lg:h-9 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isOpponentActive && isPlaying ? 'border-red-500/30 bg-red-500/10' : 'dark:border-white/5 border-black/10'}`}>
+                                    <span className={`font-mono text-xs sm:text-sm lg:text-base font-semibold ${opponentTime <= 30000 && isPlaying ? 'text-red-400' : 'dark:text-white/90 text-neutral-800'}`}>{formatTime(opponentTime)}</span>
+                                </div>
+                            </div>
+
+                            {/* The Board */}
+                            <div className="w-full flex items-center justify-center">
+                                <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={() => { setMoveHistory(chess.history()); setActiveColor(chess.turn() === 'w' ? 'white' : 'black'); }} />
+                            </div>
+
+                            {/* Your Info */}
+                            <div className="w-full flex items-center justify-between">
+                                <div className="flex items-center gap-2 lg:gap-3">
+                                    <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-green-500/20 rounded-lg flex items-center justify-center border border-green-500/30 shadow-md">
+                                        <IconUser className="w-4 h-4 sm:w-5 sm:h-5 lg:w-5 lg:h-5 text-green-400" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-sm">You</span>
+                                        <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">Rating: 1200</span>
+                                    </div>
+                                </div>
+                                <div className={`dark:bg-neutral-800 bg-neutral-200 w-16 h-6 sm:w-24 sm:h-8 lg:w-28 lg:h-9 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isYourActive && isPlaying ? 'border-green-500/30 bg-green-500/10' : 'dark:border-white/5 border-black/10'}`}>
+                                    <span className={`font-mono text-xs sm:text-sm lg:text-base font-semibold ${yourTime <= 30000 && isPlaying ? 'text-red-400' : 'text-green-400'}`}>{formatTime(yourTime)}</span>
+                                </div>
+                            </div>
+
+                            {/* Play Button (desktop) */}
+                            <div className="hidden lg:block">
+                                <Button
+                                    onClick={handlePlay}
+                                    disabled={isSearching || isPlaying}
+                                    className="w-full bg-green-500 hover:bg-green-400 text-neutral-900 font-bold py-3 rounded-xl transition-all shadow-xl hover:shadow-green-500/20 text-base tracking-wide uppercase"
+                                >
+                                    {isSearching ? "Searching..." : isPlaying ? "In Progress" : "Find Match"}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ─── Right Panel: Chat (Desktop only) ─── */}
+                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-l dark:border-white/5 border-black/5">
+                        {/* Chat area */}
+                        <div className="flex-1 rounded-lg dark:bg-neutral-800/60 bg-neutral-200/60 p-2.5 flex flex-col overflow-hidden min-h-0">
+                            <div className="flex items-center gap-1 mb-1.5">
+                                <IconMessageCircle className="w-3 h-3 dark:text-neutral-500 text-neutral-400" />
+                                <span className="text-[9px] font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400">Chat</span>
+                            </div>
+                            <div className="flex-1 flex flex-col gap-1.5 text-[11px] overflow-y-auto min-h-0">
+                                {!isPlaying && chatMessages.length === 0 ? (
+                                    <div className="flex-1 flex items-center justify-center">
+                                        <p className="dark:text-neutral-500 text-neutral-400 text-[10px]">Waiting for match...</p>
+                                    </div>
+                                ) : (
+                                    chatMessages.map((msg, idx) => (
+                                        <div key={idx} className={`max-w-[90%] px-2 py-1.5 rounded-lg text-[11px] ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm text-white' : 'dark:bg-neutral-700 bg-neutral-300 self-start rounded-tl-sm border dark:border-white/10 border-black/10'}`}>
+                                            <span className="text-[9px] opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : 'Opponent'}</span>
+                                            <span className="dark:text-white/90 text-neutral-800">{msg.text}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                        {/* Chat input */}
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                                placeholder="Type a message..."
+                                className="flex-1 dark:bg-neutral-800 bg-neutral-200 border dark:border-white/10 border-black/10 rounded-lg px-3 py-2 text-[11px] dark:text-white text-neutral-800 focus:outline-none focus:border-green-500/50 transition-colors dark:placeholder:text-neutral-600 placeholder:text-neutral-400 disabled:opacity-50"
+                                disabled={!isPlaying}
+                            />
+                            <button
+                                onClick={handleSendMessage}
+                                className="p-2 bg-green-500 text-black rounded-lg transition-colors disabled:opacity-50 hover:bg-green-400 focus:outline-none"
+                                disabled={!isPlaying || !chatInput.trim()}
+                            >
+                                <IconSend className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
 
                 {/* Mobile Bottom Toolbar */}
-                <div className="game-toolbar lg:hidden bg-neutral-900/90 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 flex items-center justify-around px-2 sm:px-4">
+                <div className="lg:hidden bg-neutral-900/90 backdrop-blur-md border-t border-white/10 flex items-center justify-around px-2 sm:px-4 h-12 sm:h-14">
                     <button
                         onClick={() => setMobileChatOpen(true)}
                         className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors relative"
