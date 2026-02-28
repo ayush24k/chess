@@ -37,7 +37,7 @@ export default function SignIn() {
                 toast.error(res.error === "CredentialsSignin" ? "Invalid email/username or password" : res.error);
             } else {
                 toast.success("Signed in successfully!");
-                router.push("/game");
+                router.push("/lobby");
             }
         } catch {
             toast.error("Something went wrong. Please try again.");
@@ -47,7 +47,7 @@ export default function SignIn() {
     }
 
     async function handleOAuth(provider: string) {
-        await signIn(provider, { callbackUrl: "/game" });
+        await signIn(provider, { callbackUrl: "/lobby" });
     }
 
     return (

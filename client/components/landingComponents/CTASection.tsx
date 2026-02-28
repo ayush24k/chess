@@ -30,7 +30,7 @@ export default function CTASection() {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Button className="px-10 py-4 bg-green-500 text-xl font-semibold text-neutral-900 rounded-xl">
-                            <Link href="/game">Start Playing Now</Link>
+                            <Link href="/lobby">Start Playing Now</Link>
                         </Button>
                         <Link
                             href="https://github.com/ayush24k/chess"

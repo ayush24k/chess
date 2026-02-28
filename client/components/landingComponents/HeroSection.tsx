@@ -44,7 +44,7 @@ export default function HeroSection() {
 
                             <div className="flex md:gap-8 gap-6">
                                 <Button className="my-8 px-8 py-3 bg-green-500 md:text-2xl text-lg font-semibold text-neutral-900 rounded-xl">
-                                    <Link href={"/game"}>Play Now — It&apos;s Free</Link>
+                                    <Link href={"/lobby"}>Play Now — It&apos;s Free</Link>
                                 </Button>
                                 <Button className="my-8 px-8 py-3 md:text-2xl text-lg text-neutral-900 rounded-xl flex justify-center items-center">
                                     <Link href={"https://github.com/ayush24k/chess"} target="_blank" className="flex items-center justify-center gap-2">

@@ -59,7 +59,7 @@ export default function SignUp() {
                 toast.warning("Account created but auto-login failed. Please sign in manually.");
                 router.push("/signin");
             } else {
-                router.push("/game");
+                router.push("/lobby");
             }
         } catch {
             toast.error("Something went wrong. Please try again.");
@@ -69,7 +69,7 @@ export default function SignUp() {
     }
 
     async function handleOAuth(provider: string) {
-        await signIn(provider, { callbackUrl: "/game" });
+        await signIn(provider, { callbackUrl: "/lobby" });
     }
 
     return (
