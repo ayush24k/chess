@@ -37,11 +37,19 @@ export default function ProfilePage() {
         }
         if (status === "authenticated") {
             fetch("/api/user/me")
-                .then(res => res.ok ? res.json() : null)
+                .then(async (res) => {
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}))
+                        console.error("Profile API error:", res.status, err)
+                        return null
+                    }
+                    return res.json()
+                })
                 .then(data => {
                     if (data?.user) setUser(data.user)
+                    else console.error("No user in response:", data)
                 })
-                .catch(() => {})
+                .catch((err) => console.error("Profile fetch failed:", err))
                 .finally(() => setLoading(false))
         }
     }, [status, router])

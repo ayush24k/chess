@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import prismaClient from "@/services/primsaClient";
+import { getAuthUserId } from "@/lib/auth";
 
 // GET /api/friends — List friends and pending requests
 // POST /api/friends — Send a friend request (body: { username: string })
 export async function GET(req: NextRequest) {
     try {
-        const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        if (!token?.userID) {
+        const userId = await getAuthUserId(req);
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = token.userID as string;
 
         const [sentRequests, receivedRequests] = await Promise.all([
             prismaClient.friendRequest.findMany({
@@ -59,12 +57,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        if (!token?.userID) {
+        const userId = await getAuthUserId(req);
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = token.userID as string;
         const { username } = await req.json();
 
         if (!username || typeof username !== "string") {

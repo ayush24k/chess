@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import prismaClient from "@/services/primsaClient";
+import { getAuthUserId } from "@/lib/auth";
 
 // GET /api/games/history — Get current user's game history
 export async function GET(req: NextRequest) {
     try {
-        const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        if (!token?.userID) {
+        const userId = await getAuthUserId(req);
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = token.userID as string;
         const { searchParams } = new URL(req.url);
         const page = parseInt(searchParams.get("page") || "1");
         const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import prismaClient from "@/services/primsaClient";
+import { getAuthUserId } from "@/lib/auth";
 
 // POST /api/friends/respond — Accept or decline a friend request
 // body: { requestId: string, action: "accept" | "decline" }
 export async function POST(req: NextRequest) {
     try {
-        const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        if (!token?.userID) {
+        const userId = await getAuthUserId(req);
+        if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        const userId = token.userID as string;
         const { requestId, action } = await req.json();
 
         if (!requestId || !["accept", "decline"].includes(action)) {

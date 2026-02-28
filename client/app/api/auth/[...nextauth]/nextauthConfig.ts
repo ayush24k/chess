@@ -82,8 +82,28 @@ export const nextAuthConfig = {
             return true;
         },
 
-        async jwt({ token, user }: any) {
-            token.userID = token.sub;
+        async jwt({ token, user, account }: any) {
+            if (user) {
+                // On initial sign-in, resolve the real database UUID
+                if (account?.provider === 'credentials') {
+                    token.userID = user.id; // authorize() returns DB id
+                } else {
+                    // OAuth: look up user by email to get the DB UUID
+                    const dbUser = await prismaClient.user.findUnique({
+                        where: { email: user.email },
+                        select: { id: true },
+                    });
+                    token.userID = dbUser?.id ?? token.sub;
+                }
+            } else if (token.email && !token.dbResolved) {
+                // Existing token — resolve DB id from email (handles pre-fix tokens)
+                const dbUser = await prismaClient.user.findUnique({
+                    where: { email: token.email as string },
+                    select: { id: true },
+                });
+                if (dbUser) token.userID = dbUser.id;
+                token.dbResolved = true; // only do this lookup once
+            }
             return token;
         },
 
