@@ -6,7 +6,7 @@ import { useSocketContext } from "@/app/contexts/SocketContext";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle } from "@tabler/icons-react";
 
 type UserProfile = {
@@ -153,17 +153,15 @@ export default function GamePage() {
     };
 
     // Initialize WebRTC for video chat
-    const initializeWebRTC = useCallback(async (color: string) => {
-        if (!socket) return;
-
+    const initializeWebRTC = useCallback(async (color: string, ws: WebSocket) => {
         const pc = new RTCPeerConnection({
             iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
         });
         peerConnectionRef.current = pc;
 
         pc.onicecandidate = (event) => {
-            if (event.candidate && socket) {
-                socket.send(JSON.stringify({ type: WEBRTC_ICE, payload: event.candidate }));
+            if (event.candidate && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: WEBRTC_ICE, payload: event.candidate }));
             }
         };
 
@@ -194,9 +192,11 @@ export default function GamePage() {
         if (color === 'white') {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            socket.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
+            }
         }
-    }, [socket]);
+    }, []);
 
     // Initialize game from matchData (lobby matchmaking or "Play Again")
     useEffect(() => {
@@ -206,6 +206,7 @@ export default function GamePage() {
         setChess(newChess);
         setBoard(newChess.board());
         setMoveHistory([]);
+        setChatMessages([]);
         setWhiteTime(10 * 60 * 1000);
         setBlackTime(10 * 60 * 1000);
         setActiveColor('white');
@@ -222,11 +223,11 @@ export default function GamePage() {
             createGameInDB(matchData.gameId, userProfile.id, matchData.opponent.id);
         }
 
-        console.log("Game initialised:", matchData.gameId);
-        initializeWebRTC(matchData.color);
+        console.log("Game initialised:", matchData.gameId, "opponent:", matchData.opponent);
+        initializeWebRTC(matchData.color, socket);
         clearMatch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [matchData]);
+    }, [matchData, socket]);
 
     // Socket message handler for gameplay messages
     useEffect(() => {
@@ -239,6 +240,34 @@ export default function GamePage() {
             console.log(message);
 
             switch (message.type) {
+                case INIT_GAME: {
+                    // Fallback: handle INIT_GAME directly if matchData flow missed it
+                    if (!isPlaying) {
+                        const newChess = new Chess();
+                        setChess(newChess);
+                        setBoard(newChess.board());
+                        setMoveHistory([]);
+                        setChatMessages([]);
+                        setWhiteTime(10 * 60 * 1000);
+                        setBlackTime(10 * 60 * 1000);
+                        setActiveColor('white');
+                        setStatus("Match started! Opponent connected.");
+                        setIsPlaying(true);
+                        setPlayerColor(message.payload.color);
+                        setGameOverDetails(null);
+                        setRatingChange(null);
+                        setCurrentGameId(message.payload.gameId);
+                        if (message.payload.opponent) {
+                            setOpponentInfo(message.payload.opponent);
+                        }
+                        if (message.payload.color === 'white' && userProfile) {
+                            createGameInDB(message.payload.gameId, userProfile.id, message.payload.opponent?.id);
+                        }
+                        console.log("Game initialised (fallback):", message.payload.gameId, "opponent:", message.payload.opponent);
+                        initializeWebRTC(message.payload.color, socket);
+                    }
+                    break;
+                }
                 case MOVE: {
                     const move = message.payload;
                     chess.move({ from: move.from, to: move.to });
@@ -317,7 +346,7 @@ export default function GamePage() {
 
         socket.addEventListener('message', handleMessage);
         return () => socket.removeEventListener('message', handleMessage);
-    }, [socket, chess, userProfile, createGameInDB, saveMoveInDB, endGameInDB])
+    }, [socket, chess, isPlaying, userProfile, createGameInDB, saveMoveInDB, endGameInDB, initializeWebRTC])
 
     useEffect(() => {
         if (status) {
@@ -544,7 +573,7 @@ export default function GamePage() {
                             {!isPlaying && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 z-0">
                                     <IconUser className="w-8 h-8 dark:text-neutral-600 text-neutral-400" />
-                                    <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">Opponent</span>
+                                    <span className="text-[10px] font-medium dark:text-neutral-500 text-neutral-400">{opponentName}</span>
                                 </div>
                             )}
                             <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover z-10" />
@@ -610,7 +639,7 @@ export default function GamePage() {
                             <div className="lg:hidden flex gap-2 sm:gap-3 w-full">
                                 <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-md">
                                     <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
-                                        <span className="text-[8px] sm:text-[10px] text-neutral-300 font-medium">Opponent</span>
+                                        <span className="text-[8px] sm:text-[10px] text-neutral-300 font-medium">{opponentName}</span>
                                     </div>
                                     {!isPlaying && (
                                         <IconVideo className="w-5 h-5 text-neutral-500 opacity-40 z-10" />
@@ -619,7 +648,7 @@ export default function GamePage() {
                                 </div>
                                 <div className="flex-1 aspect-video rounded-lg sm:rounded-xl bg-neutral-800/80 border border-green-500/20 relative overflow-hidden flex items-center justify-center shadow-md">
                                     <div className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 z-20 bg-black/50 backdrop-blur-sm rounded px-1 py-0.5 sm:px-1.5 sm:py-1">
-                                        <span className="text-[8px] sm:text-[10px] text-green-400 font-medium">You</span>
+                                        <span className="text-[8px] sm:text-[10px] text-green-400 font-medium">{yourName}</span>
                                     </div>
                                     {!isPlaying && (
                                         <IconVideo className="w-5 h-5 text-green-400 opacity-40 z-10" />
@@ -720,7 +749,7 @@ export default function GamePage() {
                                 ) : (
                                     chatMessages.map((msg, idx) => (
                                         <div key={idx} className={`max-w-[90%] px-2 py-1.5 rounded-lg text-[11px] ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm text-white' : 'dark:bg-neutral-700 bg-neutral-300 self-start rounded-tl-sm border dark:border-white/10 border-black/10'}`}>
-                                            <span className="text-[9px] opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : 'Opponent'}</span>
+                                            <span className="text-[9px] opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : opponentName}</span>
                                             <span className="dark:text-white/90 text-neutral-800">{msg.text}</span>
                                         </div>
                                     ))
@@ -801,7 +830,7 @@ export default function GamePage() {
                         ) : (
                             chatMessages.map((msg, idx) => (
                                 <div key={idx} className={`max-w-[85%] px-3 py-2 rounded-xl text-white/90 text-sm ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm' : 'bg-neutral-800 self-start rounded-tl-sm border border-white/10'}`}>
-                                    <span className="text-xs opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : 'Opponent'}</span>
+                                    <span className="text-xs opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : opponentName}</span>
                                     {msg.text}
                                 </div>
                             ))

@@ -40,13 +40,31 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         const wsUrl = process.env.NEXT_PUBLIC_WS_BACKEND_URL || '';
 
         const sendInit = (ws: WebSocket) => {
-            ws.send(JSON.stringify({ type: INIT_GAME, payload: playerInfo }));
             setIsSearching(true);
             searchingRef.current = true;
+            ws.send(JSON.stringify({ type: INIT_GAME, payload: playerInfo }));
         };
 
-        // If already connected, just send INIT_GAME
+        const attachMatchListener = (ws: WebSocket) => {
+            const handleMessage = (event: MessageEvent) => {
+                const message = JSON.parse(event.data);
+                if (message.type === INIT_GAME && searchingRef.current) {
+                    setMatchData({
+                        color: message.payload.color,
+                        opponent: message.payload.opponent,
+                        gameId: message.payload.gameId,
+                    });
+                    setIsSearching(false);
+                    searchingRef.current = false;
+                    ws.removeEventListener('message', handleMessage);
+                }
+            };
+            ws.addEventListener('message', handleMessage);
+        };
+
+        // If already connected, reuse existing socket
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            attachMatchListener(socketRef.current);
             sendInit(socketRef.current);
             return;
         }
@@ -56,6 +74,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
         ws.onopen = () => {
             setSocket(ws);
+            attachMatchListener(ws);
             sendInit(ws);
         };
 
@@ -65,22 +84,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
             setIsSearching(false);
             searchingRef.current = false;
         };
-
-        // Listen for INIT_GAME response during matchmaking
-        const handleMessage = (event: MessageEvent) => {
-            const message = JSON.parse(event.data);
-            if (message.type === INIT_GAME && searchingRef.current) {
-                setMatchData({
-                    color: message.payload.color,
-                    opponent: message.payload.opponent,
-                    gameId: message.payload.gameId,
-                });
-                setIsSearching(false);
-                searchingRef.current = false;
-            }
-        };
-
-        ws.addEventListener('message', handleMessage);
     }, []);
 
     const cancelSearch = useCallback(() => {
