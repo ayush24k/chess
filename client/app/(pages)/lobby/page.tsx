@@ -327,28 +327,28 @@ export default function LobbyPage() {
                 </aside>
 
                 {/* ── Main Content ── */}
-                <main className="flex-1 overflow-y-auto flex items-center justify-center">
-                    <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                <main className="flex-1 overflow-hidden flex flex-col lg:justify-center">
+                    <div className="max-w-6xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 lg:py-12 flex flex-col flex-1 lg:flex-initial min-h-0">
 
                         {/* Title */}
-                        <div className="text-center mb-8 sm:mb-12">
-                            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight dark:text-white text-neutral-900 mb-2">
+                        <div className="text-center mb-3 sm:mb-6 lg:mb-12 shrink-0">
+                            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold tracking-tight dark:text-white text-neutral-900 mb-0.5 sm:mb-2">
                                 Game Lobby
                             </h1>
-                            <p className="text-sm sm:text-base dark:text-neutral-400 text-neutral-600">
+                            <p className="text-xs sm:text-sm lg:text-base dark:text-neutral-400 text-neutral-600">
                                 Set up your camera and find a match
                             </p>
-                            <div className="mt-3 flex justify-center">
+                            <div className="mt-1.5 sm:mt-3 flex justify-center">
                                 <PlayersOnline />
                             </div>
                         </div>
 
                         {/* Webcam + Play Section */}
-                        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6 lg:gap-6 items-center">
+                        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-3 sm:gap-4 lg:gap-6 items-center flex-1 lg:flex-initial min-h-0">
 
-                            {/* Left: Quick Actions (authenticated) or spacer (guest) */}
+                            {/* Left: Quick Actions (authenticated, desktop only) or spacer (guest) */}
                             {isAuthenticated ? (
-                                <div className="order-2 lg:order-1 rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-4 backdrop-blur-md shadow-lg self-center">
+                                <div className="hidden lg:block order-1 rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-4 backdrop-blur-md shadow-lg self-center">
                                     <h3 className="text-xs font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400 mb-3">Quick Actions</h3>
                                     <div className="flex flex-col gap-1.5">
                                         {[
@@ -371,8 +371,8 @@ export default function LobbyPage() {
                             )}
 
                             {/* Center: Webcam Box */}
-                            <div className={`order-1 lg:order-2 flex flex-col items-center ${isAuthenticated ? "self-center" : ""}`}>
-                                <div className="relative w-full max-w-xl aspect-video rounded-2xl overflow-hidden dark:bg-neutral-900 bg-neutral-100 border dark:border-white/10 border-black/10 shadow-xl mx-auto">
+                            <div className={`order-1 lg:order-2 flex flex-col items-center min-h-0 flex-1 lg:flex-initial ${isAuthenticated ? "self-center" : ""}`}>
+                                <div className="relative w-full max-w-xl rounded-2xl overflow-hidden dark:bg-neutral-900 bg-neutral-100 border dark:border-white/10 border-black/10 shadow-xl mx-auto aspect-video">
                                     {/* Glow */}
                                     <div className="absolute -top-20 -left-20 w-60 h-60 bg-green-500 rounded-full blur-[120px] opacity-15 pointer-events-none" />
                                     <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-green-400 rounded-full blur-[120px] opacity-10 pointer-events-none" />
@@ -438,11 +438,11 @@ export default function LobbyPage() {
                             </div>
 
                             {/* Right Side: Account or Auth */}
-                            <div className="order-3 w-full flex flex-col gap-4 self-center">
+                            <div className="order-3 w-full flex flex-col gap-3 sm:gap-4 self-center shrink-0">
                                 {isAuthenticated ? (
                                     /* Player Card */
-                                    <div className="rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-5 backdrop-blur-md shadow-xl">
-                                        <div className="flex items-center gap-3 mb-4">
+                                    <div className="rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-3 sm:p-5 backdrop-blur-md shadow-xl">
+                                        <div className="flex items-center gap-3 mb-3 sm:mb-4">
                                             {session?.user?.image ? (
                                                 <img src={session.user.image} alt="" className="w-12 h-12 rounded-full border-2 border-green-500/30 object-cover" />
                                             ) : (
@@ -456,7 +456,7 @@ export default function LobbyPage() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 mb-4">
+                                        <div className="grid grid-cols-3 gap-2 mb-3 sm:mb-4">
                                             {[
                                                 { label: "Rating", value: userStats?.rating?.toString() ?? "500" },
                                                 { label: "Wins", value: userStats?.wins?.toString() ?? "0" },
@@ -473,7 +473,7 @@ export default function LobbyPage() {
                                         <button
                                             onClick={handlePlay}
                                             disabled={isMatchSearching}
-                                            className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-bold text-base tracking-wide transition-all shadow-xl hover:shadow-green-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                                            className="w-full flex items-center justify-center gap-2 sm:gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3.5 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-bold text-sm sm:text-base tracking-wide transition-all shadow-xl hover:shadow-green-500/20 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
                                             <IconPlayerPlay className="w-5 h-5" />
                                             {isMatchSearching ? 'Searching...' : 'Play Now'}
