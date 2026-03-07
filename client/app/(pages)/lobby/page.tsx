@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, type MouseEvent } from "react"
 import { useSession, signOut, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -10,6 +10,8 @@ import {
     IconChevronDown,
     IconCamera,
     IconCameraOff,
+    IconMicrophone,
+    IconMicrophoneOff,
     IconPlayerPlay,
     IconTrophy,
     IconHistory,
@@ -26,6 +28,7 @@ import {
 import { useToast } from "@/components/ui/Toast"
 import PlayersOnline from "@/components/landingComponents/PlayersOnline"
 import { useSocketContext } from "@/app/contexts/SocketContext"
+import AuthModal from "@/components/ui/AuthModal"
 
 const SIDEBAR_ITEMS = [
     { icon: IconHome, label: "Lobby", href: "/lobby", active: true },
@@ -47,6 +50,9 @@ export default function LobbyPage() {
     // User profile from DB
     const [userStats, setUserStats] = useState<{ rating: number; totalGames: number; wins: number } | null>(null)
 
+    // Auth modal state
+    const [authModal, setAuthModal] = useState<"signin" | "signup" | null>(null)
+
     // Dropdown / sidebar state
     const [profileOpen, setProfileOpen] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -57,6 +63,7 @@ export default function LobbyPage() {
     const streamRef = useRef<MediaStream | null>(null)
     const [cameraActive, setCameraActive] = useState(false)
     const [cameraError, setCameraError] = useState<string | null>(null)
+    const [micActive, setMicActive] = useState(false)
 
     // Fetch user stats from DB
     useEffect(() => {
@@ -72,13 +79,13 @@ export default function LobbyPage() {
                         })
                     }
                 })
-                .catch(() => {})
+                .catch(() => { })
         }
     }, [isAuthenticated])
 
     // Close profile dropdown on outside click
     useEffect(() => {
-        function handleClick(e: MouseEvent) {
+        function handleClick(e: any) {
             if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
                 setProfileOpen(false)
             }
@@ -90,15 +97,22 @@ export default function LobbyPage() {
     // Request webcam
     const startCamera = useCallback(async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-            streamRef.current = stream
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                stream.getAudioTracks().forEach(track => track.enabled = micActive)
+                streamRef.current = stream
+            } catch (err) {
+                // Fallback to video only if mic is unavailable
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                streamRef.current = stream
+            }
             setCameraActive(true)
             setCameraError(null)
         } catch {
             setCameraError("Camera permission denied. Please allow access in your browser settings.")
             setCameraActive(false)
         }
-    }, [])
+    }, [micActive])
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -109,6 +123,16 @@ export default function LobbyPage() {
         setCameraActive(false)
     }, [])
 
+    const toggleMic = useCallback(() => {
+        setMicActive(prev => {
+            const next = !prev
+            if (streamRef.current) {
+                streamRef.current.getAudioTracks().forEach(track => track.enabled = next)
+            }
+            return next
+        })
+    }, [])
+
     // Attach stream to video element after render
     useEffect(() => {
         if (cameraActive && videoRef.current && streamRef.current) {
@@ -116,9 +140,8 @@ export default function LobbyPage() {
         }
     }, [cameraActive])
 
-    // Auto-request camera on mount
+    // Cleanup on unmount
     useEffect(() => {
-        startCamera()
         return () => stopCamera()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -129,6 +152,15 @@ export default function LobbyPage() {
             router.push("/game")
         }
     }, [matchData, router])
+
+    function handleNavClick(e: MouseEvent<HTMLAnchorElement>, disabled: boolean) {
+        if (disabled) {
+            e.preventDefault()
+            toast.error("Please sign in to access this page")
+            return
+        }
+        setSidebarOpen(false)
+    }
 
     function handlePlay() {
         if (!isAuthenticated) {
@@ -234,18 +266,18 @@ export default function LobbyPage() {
                         </>
                     ) : (
                         <div className="flex items-center gap-2">
-                            <Link
-                                href="/signin"
+                            <button
+                                onClick={() => setAuthModal("signin")}
                                 className="px-4 py-2 text-sm font-medium rounded-xl dark:text-neutral-300 text-neutral-700 dark:hover:bg-white/10 hover:bg-black/5 transition-colors"
                             >
                                 Sign In
-                            </Link>
-                            <Link
-                                href="/signup"
+                            </button>
+                            <button
+                                onClick={() => setAuthModal("signup")}
                                 className="px-4 py-2 text-sm font-semibold rounded-xl bg-green-500 text-neutral-900 hover:bg-green-400 transition-colors shadow-md"
                             >
                                 Sign Up
-                            </Link>
+                            </button>
                         </div>
                     )}
                 </div>
@@ -282,21 +314,25 @@ export default function LobbyPage() {
 
                     {/* Sidebar items */}
                     <nav className="flex-1 py-4 px-3 flex flex-col gap-1 overflow-y-auto">
-                        {SIDEBAR_ITEMS.map((item) => (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                onClick={() => setSidebarOpen(false)}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                                    item.active
+                        {SIDEBAR_ITEMS.map((item) => {
+                            const disabled = !isAuthenticated && item.href !== "/lobby"
+                            return (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    aria-disabled={disabled}
+                                    tabIndex={disabled ? -1 : undefined}
+                                    onClick={(e) => handleNavClick(e, disabled)}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${item.active
                                         ? "dark:bg-green-500/10 bg-green-500/10 text-green-500 border border-green-500/20"
                                         : "dark:text-neutral-400 text-neutral-600 dark:hover:bg-white/5 hover:bg-black/5 dark:hover:text-neutral-200 hover:text-neutral-800"
-                                }`}
-                            >
-                                <item.icon className="w-5 h-5" />
-                                {item.label}
-                            </Link>
-                        ))}
+                                        } ${disabled ? "opacity-60 cursor-not-allowed dark:hover:bg-transparent hover:bg-transparent" : ""}`}
+                                >
+                                    <item.icon className="w-5 h-5" />
+                                    {item.label}
+                                </Link>
+                            )
+                        })}
                     </nav>
 
                     {/* Sidebar bottom: user info or login */}
@@ -316,12 +352,12 @@ export default function LobbyPage() {
                                 </div>
                             </div>
                         ) : (
-                            <Link
-                                href="/signin"
+                            <button
+                                onClick={() => setAuthModal("signin")}
                                 className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl bg-green-500 text-neutral-900 text-sm font-semibold hover:bg-green-400 transition-colors"
                             >
                                 Sign In to Play
-                            </Link>
+                            </button>
                         )}
                     </div>
                 </aside>
@@ -411,20 +447,28 @@ export default function LobbyPage() {
                                         {cameraActive ? (
                                             <button
                                                 onClick={stopCamera}
-                                                className="p-2.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-colors shadow-lg"
+                                                className="p-2.5 rounded-full bg-green-500/80 hover:bg-green-500 text-neutral-900 backdrop-blur-sm transition-colors shadow-lg"
                                                 title="Turn off camera"
                                             >
-                                                <IconCameraOff className="w-5 h-5" />
+                                                <IconCamera className="w-5 h-5" />
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={startCamera}
-                                                className="p-2.5 rounded-full bg-green-500/80 hover:bg-green-500 text-neutral-900 backdrop-blur-sm transition-colors shadow-lg"
+                                                className="p-2.5 rounded-full bg-red-500/80 hover:bg-red-500 text-white backdrop-blur-sm transition-colors shadow-lg"
                                                 title="Turn on camera"
                                             >
-                                                <IconCamera className="w-5 h-5" />
+                                                <IconCameraOff className="w-5 h-5" />
                                             </button>
                                         )}
+
+                                        <button
+                                            onClick={toggleMic}
+                                            className={`p-2.5 rounded-full backdrop-blur-sm transition-colors shadow-lg ${micActive ? "bg-green-500/80 hover:bg-green-500 text-neutral-900" : "bg-red-500/80 hover:bg-red-500 text-white"}`}
+                                            title={micActive ? "Turn off mic" : "Turn on mic"}
+                                        >
+                                            {micActive ? <IconMicrophone className="w-5 h-5" /> : <IconMicrophoneOff className="w-5 h-5" />}
+                                        </button>
                                     </div>
 
                                     {/* Live indicator */}
@@ -483,18 +527,18 @@ export default function LobbyPage() {
                                     /* Not signed in: show auth options */
                                     <div className="rounded-2xl dark:bg-neutral-900/80 bg-white/80 border dark:border-white/10 border-black/10 p-4 backdrop-blur-md shadow-xl">
                                         <div className="flex flex-col gap-2.5">
-                                            <Link
-                                                href="/signin"
+                                            <button
+                                                onClick={() => setAuthModal("signin")}
                                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors shadow-md"
                                             >
                                                 Sign In
-                                            </Link>
-                                            <Link
-                                                href="/signup"
+                                            </button>
+                                            <button
+                                                onClick={() => setAuthModal("signup")}
                                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:text-white text-neutral-900 font-semibold text-sm dark:hover:bg-white/5 hover:bg-black/5 transition-colors"
                                             >
                                                 Create Account
-                                            </Link>
+                                            </button>
 
                                             <div className="flex items-center gap-3 my-1">
                                                 <div className="h-[1px] flex-1 dark:bg-neutral-700 bg-neutral-300" />
@@ -528,6 +572,15 @@ export default function LobbyPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Auth Modal */}
+            {authModal && (
+                <AuthModal
+                    mode={authModal}
+                    onClose={() => setAuthModal(null)}
+                    onSwitchMode={(m) => setAuthModal(m)}
+                />
+            )}
 
             {/* Matchmaking Overlay */}
             {isMatchSearching && (

@@ -12,7 +12,7 @@ export default function Navbar() {
                 <div className="flex items-center gap-3">
                     <ThemeToggle />
                     <Button className="rounded-xl md:rounded-2xl">
-                        <Link href={'/signin'}>login</Link>
+                        <Link href={'/lobby'}>Play</Link>
                     </Button>
                 </div>
             </nav>

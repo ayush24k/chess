@@ -59,6 +59,7 @@ export default function GamePage() {
     const mobileRemoteVideoRef = useRef<HTMLVideoElement>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+    const iceCandidateQueueRef = useRef<RTCIceCandidate[]>([]);
 
     // Fetch user profile on mount
     useEffect(() => {
@@ -154,9 +155,30 @@ export default function GamePage() {
 
     // Initialize WebRTC for video chat
     const initializeWebRTC = useCallback(async (color: string, ws: WebSocket) => {
-        const pc = new RTCPeerConnection({
-            iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-        });
+        // Close any existing peer connection cleanly
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+        }
+        iceCandidateQueueRef.current = [];
+
+        const iceServers: RTCIceServer[] = [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" },
+            // TURN relay — required for cross-network connections (mobile ↔ desktop)
+            // Set NEXT_PUBLIC_TURN_URL, NEXT_PUBLIC_TURN_USERNAME, NEXT_PUBLIC_TURN_CREDENTIAL in .env
+            ...(process.env.NEXT_PUBLIC_TURN_URL
+                ? [{
+                    urls: process.env.NEXT_PUBLIC_TURN_URL,
+                    username: process.env.NEXT_PUBLIC_TURN_USERNAME ?? "",
+                    credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? "",
+                }]
+                : []),
+        ];
+
+        const pc = new RTCPeerConnection({ iceServers });
         peerConnectionRef.current = pc;
 
         pc.onicecandidate = (event) => {
@@ -320,6 +342,11 @@ export default function GamePage() {
                         const pc = peerConnectionRef.current;
                         if (!pc) return;
                         await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                        // Drain ICE candidates that arrived before the offer was processed
+                        for (const candidate of iceCandidateQueueRef.current) {
+                            await pc.addIceCandidate(candidate).catch(console.error);
+                        }
+                        iceCandidateQueueRef.current = [];
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
                         socket.send(JSON.stringify({ type: WEBRTC_ANSWER, payload: answer }));
@@ -328,16 +355,29 @@ export default function GamePage() {
                     break;
                 }
                 case WEBRTC_ANSWER: {
-                    const pc = peerConnectionRef.current;
-                    if (pc) {
-                        pc.setRemoteDescription(new RTCSessionDescription(message.payload));
-                    }
+                    const handleAnswer = async () => {
+                        const pc = peerConnectionRef.current;
+                        if (!pc) return;
+                        await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                        // Drain ICE candidates that arrived before the answer was processed
+                        for (const candidate of iceCandidateQueueRef.current) {
+                            await pc.addIceCandidate(candidate).catch(console.error);
+                        }
+                        iceCandidateQueueRef.current = [];
+                    };
+                    handleAnswer();
                     break;
                 }
                 case WEBRTC_ICE: {
                     const pc = peerConnectionRef.current;
                     if (pc && message.payload) {
-                        pc.addIceCandidate(new RTCIceCandidate(message.payload));
+                        if (pc.remoteDescription) {
+                            // Remote description is ready, add immediately
+                            pc.addIceCandidate(new RTCIceCandidate(message.payload)).catch(console.error);
+                        } else {
+                            // Queue until remote description is set
+                            iceCandidateQueueRef.current.push(new RTCIceCandidate(message.payload));
+                        }
                     }
                     break;
                 }
