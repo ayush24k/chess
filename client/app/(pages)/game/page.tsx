@@ -39,6 +39,8 @@ export default function GamePage() {
     const [playerColor, setPlayerColor] = useState<string | null>(null);
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+    const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+    const mobileChatOpenRef = useRef(false);
     const [moveHistory, setMoveHistory] = useState<string[]>([]);
     const [whiteTime, setWhiteTime] = useState(10 * 60 * 1000); // ms
     const [blackTime, setBlackTime] = useState(10 * 60 * 1000);
@@ -60,6 +62,13 @@ export default function GamePage() {
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const iceCandidateQueueRef = useRef<RTCIceCandidate[]>([]);
+
+    useEffect(() => {
+        mobileChatOpenRef.current = mobileChatOpen;
+        if (mobileChatOpen) {
+            setHasUnreadMessages(false);
+        }
+    }, [mobileChatOpen]);
 
     // Fetch user profile on mount
     useEffect(() => {
@@ -146,12 +155,12 @@ export default function GamePage() {
     }, [whiteTime, blackTime, playerColor]);
 
     // Sync video streams to both desktop and mobile video elements
-    const syncVideoStreams = () => {
+    const syncVideoStreams = useCallback(() => {
         if (localStreamRef.current) {
             if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
             if (mobileLocalVideoRef.current) mobileLocalVideoRef.current.srcObject = localStreamRef.current;
         }
-    };
+    }, []);
 
     // Initialize WebRTC for video chat
     const initializeWebRTC = useCallback(async (color: string, ws: WebSocket) => {
@@ -161,22 +170,24 @@ export default function GamePage() {
         }
         iceCandidateQueueRef.current = [];
 
+        // Build ICE servers list
         const iceServers: RTCIceServer[] = [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-            { urls: "stun:stun3.l.google.com:19302" },
-            { urls: "stun:stun4.l.google.com:19302" },
-            // TURN relay — required for cross-network connections (mobile ↔ desktop)
-            // Set NEXT_PUBLIC_TURN_URL, NEXT_PUBLIC_TURN_USERNAME, NEXT_PUBLIC_TURN_CREDENTIAL in .env
-            ...(process.env.NEXT_PUBLIC_TURN_URL
-                ? [{
-                    urls: process.env.NEXT_PUBLIC_TURN_URL,
-                    username: process.env.NEXT_PUBLIC_TURN_USERNAME ?? "",
-                    credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL ?? "",
-                }]
-                : []),
         ];
+
+        // Fetch TURN servers from Metered API if configured
+        const turnApiUrl = process.env.NEXT_PUBLIC_TURN_URL;
+        if (turnApiUrl) {
+            try {
+                const res = await fetch(turnApiUrl);
+                const servers: RTCIceServer[] = await res.json();
+                iceServers.push(...servers);
+                console.log("TURN servers fetched:", servers.length);
+            } catch (err) {
+                console.error("Failed to fetch TURN credentials:", err);
+            }
+        }
 
         const pc = new RTCPeerConnection({ iceServers });
         peerConnectionRef.current = pc;
@@ -187,8 +198,13 @@ export default function GamePage() {
             }
         };
 
+        pc.oniceconnectionstatechange = () => {
+            console.log("ICE connection state:", pc.iceConnectionState);
+        };
+
         pc.ontrack = (event) => {
             const stream = event.streams[0];
+            console.log("Remote track received:", event.track.kind);
             if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = stream;
             }
@@ -197,18 +213,24 @@ export default function GamePage() {
             }
         };
 
+        // Get local media — try video+audio, fall back to video-only, then proceed without media
+        let stream: MediaStream | null = null;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        } catch {
+            console.warn("Camera+mic failed, trying video only...");
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            } catch (err) {
+                console.error("getUserMedia failed completely:", err);
+            }
+        }
+
+        if (stream) {
             localStreamRef.current = stream;
-            if (localVideoRef.current) {
-                localVideoRef.current.srcObject = stream;
-            }
-            if (mobileLocalVideoRef.current) {
-                mobileLocalVideoRef.current.srcObject = stream;
-            }
-            stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-        } catch (err) {
-            console.error("Error accessing media devices.", err);
+            if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+            if (mobileLocalVideoRef.current) mobileLocalVideoRef.current.srcObject = stream;
+            stream.getTracks().forEach((track) => pc.addTrack(track, stream!));
         }
 
         if (color === 'white') {
@@ -248,7 +270,7 @@ export default function GamePage() {
         console.log("Game initialised:", matchData.gameId, "opponent:", matchData.opponent);
         initializeWebRTC(matchData.color, socket);
         clearMatch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchData, socket]);
 
     // Socket message handler for gameplay messages
@@ -335,12 +357,20 @@ export default function GamePage() {
                 }
                 case CHAT: {
                     setChatMessages(prev => [...prev, { sender: "opponent", text: message.payload.message }]);
+                    if (!mobileChatOpenRef.current) {
+                        setHasUnreadMessages(true);
+                    }
                     break;
                 }
                 case WEBRTC_OFFER: {
                     const handleOffer = async () => {
                         const pc = peerConnectionRef.current;
                         if (!pc) return;
+                        // Only accept an offer when stable (not mid-negotiation)
+                        if (pc.signalingState !== 'stable') {
+                            console.warn('Ignoring WEBRTC_OFFER in state:', pc.signalingState);
+                            return;
+                        }
                         await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
                         // Drain ICE candidates that arrived before the offer was processed
                         for (const candidate of iceCandidateQueueRef.current) {
@@ -358,6 +388,11 @@ export default function GamePage() {
                     const handleAnswer = async () => {
                         const pc = peerConnectionRef.current;
                         if (!pc) return;
+                        // Only apply an answer when we're waiting for one
+                        if (pc.signalingState !== 'have-local-offer') {
+                            console.warn('Ignoring WEBRTC_ANSWER in state:', pc.signalingState);
+                            return;
+                        }
                         await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
                         // Drain ICE candidates that arrived before the answer was processed
                         for (const candidate of iceCandidateQueueRef.current) {
@@ -653,9 +688,8 @@ export default function GamePage() {
                                         {movePairs.map(([white, black], idx) => (
                                             <div
                                                 key={idx}
-                                                className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] ${
-                                                    idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'dark:bg-white/5 bg-black/5' : ''
-                                                }`}
+                                                className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] ${idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'dark:bg-white/5 bg-black/5' : ''
+                                                    }`}
                                             >
                                                 <span className="w-4 dark:text-neutral-600 text-neutral-400 font-mono text-[9px]">{idx + 1}.</span>
                                                 <span className="flex-1 dark:text-white/90 text-neutral-800 font-medium font-mono">{white}</span>
@@ -827,9 +861,9 @@ export default function GamePage() {
                     >
                         <IconMessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" />
                         <span className="text-[9px] sm:text-xs text-neutral-500">Chat</span>
-                        {chatMessages.length > 0 && (
-                            <span className="absolute -top-0.5 right-0 w-4 h-4 bg-red-500 rounded-full text-[8px] font-bold text-white flex items-center justify-center">
-                                {chatMessages.length > 99 ? '99' : chatMessages.length}
+                        {hasUnreadMessages && (
+                            <span className="absolute -top-0.5 right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full text-[12px] font-bold text-white flex items-center justify-center pt-[3px]">
+                                *
                             </span>
                         )}
                     </button>
@@ -922,9 +956,8 @@ export default function GamePage() {
                                 {movePairs.map(([white, black], idx) => (
                                     <div
                                         key={idx}
-                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${
-                                            idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'bg-white/5' : ''
-                                        }`}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm ${idx === movePairs.length - 1 ? 'bg-green-500/10 border border-green-500/20' : idx % 2 === 0 ? 'bg-white/5' : ''
+                                            }`}
                                     >
                                         <span className="w-6 text-neutral-600 font-mono text-xs">{idx + 1}.</span>
                                         <span className="flex-1 text-white/90 font-medium font-mono">{white}</span>
