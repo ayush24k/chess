@@ -20,13 +20,13 @@ export default function HeroSection() {
                     <StartAnimation>
                         <div className="flex items-center flex-col gap-3 text-center px-4">
                             <p className="px-4 md:text-[16px] text-[12px] font-medium py-1 rounded-4xl inline-flex bg-gradient-to-r from-green-400 to-emerald-600 dark:text-neutral-900 text-neutral-900 shadow-2xl">
-                                Chess meets video dating ♟️💚
+                                Where chess gets social ♟️🎥
                             </p>
                             <h1 className="font-bold lg:text-7xl md:text-6xl text-4xl max-w-5xl pt-3 tracking-tighter">
-                                Play Chess. Meet People.<br className="hidden md:block" /> Make Real Connections.
+                                Play Chess. See Your<br className="hidden md:block" /> Opponent. Face to Face.
                             </h1>
                             <p className="mt-4 md:max-w-3xl max-w-[340px] md:text-lg text-[14px] text-neutral-600 dark:text-neutral-400">
-                                The only platform where you play live chess over video call with strangers — make friends, find rivals, or maybe even find your match.
+                                The only platform where you play live chess over peer-to-peer video call — see your opponent&apos;s reactions, chat in real time, and rematch instantly.
                             </p>
 
                             {/* Mini feature pills */}

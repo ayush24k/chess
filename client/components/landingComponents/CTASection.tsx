@@ -25,7 +25,7 @@ export default function CTASection() {
                         Your Next Opponent<br className="hidden md:block" /> Is Waiting
                     </h2>
                     <p className="text-neutral-500 dark:text-neutral-400 max-w-xl mx-auto mb-10 text-lg">
-                        Jump in, get matched, and start playing. No downloads, no sign-up walls — just chess, video, and real people.
+                        Jump in, get matched, and start playing. No downloads — just chess, video, and real opponents.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -43,7 +43,7 @@ export default function CTASection() {
 
                     {/* Trust line */}
                     <p className="mt-10 text-xs text-neutral-400 dark:text-neutral-600">
-                        Free to play &bull; No account required &bull; Open source
+                        Free to play &bull; Open source &bull; WebRTC powered
                     </p>
                 </motion.div>
             </div>

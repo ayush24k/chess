@@ -86,3 +86,15 @@ body {
 .animate-shake {
   animation: shake 0.35s ease-in-out;
 }
+
+/* Infinite scroll marquee for tech stack */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}

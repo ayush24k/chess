@@ -1,43 +1,43 @@
 'use client'
-import { IconChess, IconVideo, IconMessage, IconUsers, IconHeart, IconTrophy } from "@tabler/icons-react";
+import { IconChess, IconVideo, IconMessage, IconUsers, IconTrophy, IconRefresh } from "@tabler/icons-react";
 import { motion } from "motion/react";
 
 const features = [
     {
         icon: IconChess,
         title: "Live Chess",
-        description: "Play real-time chess with intelligent move validation, timers, and a beautiful interactive board.",
+        description: "Play real-time chess with full move validation, drag-and-drop pieces, and move highlighting — powered by chess.js.",
         color: "from-green-400 to-emerald-600",
     },
     {
         icon: IconVideo,
-        title: "Face-to-Face",
-        description: "See your opponent live via video call. React to blunders, celebrate wins, and trash-talk in real time.",
+        title: "Peer-to-Peer Video",
+        description: "See your opponent face-to-face via WebRTC. Watch their reactions to your brilliant moves — or your blunders.",
         color: "from-blue-400 to-cyan-600",
     },
     {
         icon: IconMessage,
         title: "Live Chat",
-        description: "Text chat built right in. Send messages, share reactions, and keep the conversation going mid-game.",
+        description: "Text chat built right into the game. Send messages, trash-talk, or say gg — all without leaving the board.",
         color: "from-purple-400 to-violet-600",
     },
     {
         icon: IconUsers,
-        title: "Meet New People",
-        description: "Get matched with random players from around the world. Every game is a chance to meet someone new.",
+        title: "Instant Matchmaking",
+        description: "Hit play and get paired with a random opponent in seconds. Every game is a new face and a new challenge.",
         color: "from-orange-400 to-red-500",
     },
     {
-        icon: IconHeart,
-        title: "Chess Dating",
-        description: "Find someone who matches your vibe — and your Elo. The smartest way to meet your next date.",
-        color: "from-pink-400 to-rose-600",
+        icon: IconTrophy,
+        title: "ELO Rating System",
+        description: "Your skill, quantified. Win games to climb the ratings, track your progress, and compete on the leaderboard.",
+        color: "from-yellow-400 to-amber-600",
     },
     {
-        icon: IconTrophy,
-        title: "Competitive Play",
-        description: "10-minute timed games keep things intense. Track your moves, review history, and improve your game.",
-        color: "from-yellow-400 to-amber-600",
+        icon: IconRefresh,
+        title: "Instant Rematch",
+        description: "Good game? Request a rematch instantly — colors swap, the board resets, and you're back in action in seconds.",
+        color: "from-pink-400 to-rose-600",
     },
 ];
 
@@ -72,7 +72,7 @@ export default function FeaturesSection() {
                         transition={{ duration: 0.5, delay: 0.2 }}
                         className="mt-4 text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto"
                     >
-                        We combined the best parts of chess, video calling, and social networking into one addictive experience.
+                        Every feature is built to make online chess feel like sitting across the board from a real person.
                     </motion.p>
                 </div>
 

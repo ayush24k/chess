@@ -1,74 +1,70 @@
 'use client'
-import { motion, useInView } from "motion/react";
-import { useRef, useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { IconBrandNextjs, IconBrandTypescript, IconBrandTailwind, IconDatabase, IconBrandNodejs } from "@tabler/icons-react";
 
-function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
-    const ref = useRef<HTMLSpanElement>(null);
-    const isInView = useInView(ref, { once: true });
-    const [count, setCount] = useState(0);
-
-    useEffect(() => {
-        if (!isInView) return;
-        let start = 0;
-        const duration = 1500;
-        const step = target / (duration / 16);
-        const timer = setInterval(() => {
-            start += step;
-            if (start >= target) {
-                setCount(target);
-                clearInterval(timer);
-            } else {
-                setCount(Math.floor(start));
-            }
-        }, 16);
-        return () => clearInterval(timer);
-    }, [isInView, target]);
-
-    return (
-        <span ref={ref}>
-            {count.toLocaleString()}{suffix}
-        </span>
-    );
-}
-
-const stats = [
-    { value: 12400, suffix: "+", label: "Games Played" },
-    { value: 3200, suffix: "+", label: "Players Worldwide" },
-    { value: 890, suffix: "+", label: "Friendships Made" },
-    { value: 47, suffix: "", label: "Countries" },
+const techStack = [
+    { name: "Next.js", icon: IconBrandNextjs, label: "Frontend Framework" },
+    { name: "TypeScript", icon: IconBrandTypescript, label: "Type Safety" },
+    { name: "WebRTC", icon: null, label: "P2P Video", emoji: "📹" },
+    { name: "WebSocket", icon: null, label: "Real-time", emoji: "⚡" },
+    { name: "chess.js", icon: null, label: "Game Engine", emoji: "♟️" },
+    { name: "Prisma", icon: IconDatabase, label: "ORM + PostgreSQL" },
+    { name: "Node.js", icon: IconBrandNodejs, label: "Backend" },
+    { name: "Tailwind CSS", icon: IconBrandTailwind, label: "Styling" },
 ];
+
+// Duplicate for infinite scroll
+const doubled = [...techStack, ...techStack];
 
 export default function StatsSection() {
     return (
-        <section className="relative py-20 dark:bg-neutral-950 bg-neutral-100">
-            <div className="max-w-6xl mx-auto px-5">
+        <section className="relative py-20 dark:bg-neutral-950 bg-neutral-100 overflow-hidden">
+            <div className="max-w-6xl mx-auto px-5 mb-10">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5 }}
-                    className="rounded-2xl dark:bg-gradient-to-r dark:from-green-950/40 dark:to-emerald-950/40 bg-gradient-to-r from-green-50 to-emerald-50 border dark:border-green-500/10 border-green-500/20 p-8 md:p-12"
+                    className="text-center"
                 >
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
-                        {stats.map((stat, i) => (
-                            <motion.div
-                                key={stat.label}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: i * 0.1 }}
-                                className="text-center"
-                            >
-                                <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-green-500">
-                                    <AnimatedNumber target={stat.value} suffix={stat.suffix} />
-                                </div>
-                                <p className="mt-2 text-sm md:text-base text-neutral-500 dark:text-neutral-400 font-medium">
-                                    {stat.label}
-                                </p>
-                            </motion.div>
-                        ))}
-                    </div>
+                    <p className="text-sm font-semibold uppercase tracking-widest text-green-500 mb-3">
+                        Built With
+                    </p>
+                    <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+                        Modern Tech, Real-Time Experience
+                    </h2>
+                    <p className="mt-4 text-neutral-500 dark:text-neutral-400 max-w-xl mx-auto">
+                        Powered by the technologies that make real-time gaming and peer-to-peer video possible.
+                    </p>
                 </motion.div>
+            </div>
+
+            {/* Infinite scroll marquee */}
+            <div className="relative">
+                {/* Fade edges */}
+                <div className="absolute left-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-r dark:from-neutral-950 from-neutral-100 to-transparent pointer-events-none" />
+                <div className="absolute right-0 top-0 bottom-0 w-24 z-10 bg-gradient-to-l dark:from-neutral-950 from-neutral-100 to-transparent pointer-events-none" />
+
+                <div className="flex animate-marquee gap-6 w-max">
+                    {doubled.map((tech, i) => (
+                        <div
+                            key={`${tech.name}-${i}`}
+                            className="flex items-center gap-3 px-6 py-4 rounded-2xl dark:bg-neutral-900/60 bg-white/80 backdrop-blur-sm border dark:border-white/5 border-black/5 min-w-[200px] hover:border-green-500/30 transition-colors"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                                {tech.icon ? (
+                                    <tech.icon className="w-5 h-5 text-white" />
+                                ) : (
+                                    <span className="text-lg">{tech.emoji}</span>
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold dark:text-white text-neutral-800">{tech.name}</p>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400">{tech.label}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </section>
     );

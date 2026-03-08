@@ -6,20 +6,20 @@ const steps = [
     {
         icon: IconUserPlus,
         step: "01",
-        title: "Jump In",
-        description: "No lengthy sign-ups. Hit \"Play Now\", allow your camera, and you're in the queue. It takes 5 seconds.",
+        title: "Sign Up & Jump In",
+        description: "Create an account with Google or GitHub in one click. Hit \"Play Now\", allow your camera, and you're in the queue.",
     },
     {
         icon: IconDeviceGamepad2,
         step: "02",
         title: "Get Matched",
-        description: "We pair you with a random opponent instantly. See them face-to-face over video while the board loads up.",
+        description: "We pair you with a random opponent instantly. Video connects automatically and the board loads — game on.",
     },
     {
         icon: IconSparkles,
         step: "03",
-        title: "Play & Connect",
-        description: "Play your game, chat, laugh, rage — whatever happens. After the match, add them as a friend or find someone new.",
+        title: "Play & Rematch",
+        description: "Play your game with full move validation and 10-minute timers. After the match, hit rematch or find a new opponent.",
     },
 ];
 
