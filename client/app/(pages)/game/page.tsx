@@ -79,6 +79,20 @@ export default function GamePage() {
     const rematchTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const rematchPopupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    // --- Sound Effects ---
+    const soundCache = useRef<Map<string, HTMLAudioElement>>(new Map());
+    const playSound = useCallback((name: string) => {
+        try {
+            let audio = soundCache.current.get(name);
+            if (!audio) {
+                audio = new Audio(`/chessSFX/${name}.mp3`);
+                soundCache.current.set(name, audio);
+            }
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        } catch {}
+    }, []);
+
     useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
     // Clean up rematch timers on unmount
@@ -370,6 +384,8 @@ export default function GamePage() {
         setCurrentGameId(matchData.gameId);
         setOpponentInfo(matchData.opponent);
 
+        playSound('game-start');
+
         console.log("Game initialised:", matchData.gameId, "opponent:", matchData.opponent);
         initializeWebRTC(matchData.color, socket);
         clearMatch();
@@ -425,6 +441,7 @@ export default function GamePage() {
                         }
                         console.log("Game initialised (fallback):", message.payload.gameId, "opponent:", message.payload.opponent);
                         initializeWebRTC(message.payload.color, socket);
+                        playSound('game-start');
                     }
                     break;
                 }
@@ -434,6 +451,19 @@ export default function GamePage() {
                     setBoard(chess.board());
                     setMoveHistory(chess.history());
                     setActiveColor(chess.turn() === 'w' ? 'white' : 'black');
+
+                    // Play appropriate sound for opponent's move
+                    if (chess.isCheck()) {
+                        playSound('move-check');
+                    } else if (move.notation && move.notation.includes('x')) {
+                        playSound('capture');
+                    } else if (move.notation && (move.notation === 'O-O' || move.notation === 'O-O-O')) {
+                        playSound('castle');
+                    } else if (move.notation && move.notation.includes('=')) {
+                        playSound('promote');
+                    } else {
+                        playSound('move-opponent');
+                    }
 
                     // Save opponent's move to DB
                     if (move.gameId && move.notation) {
@@ -463,6 +493,7 @@ export default function GamePage() {
                     setStatus(`Game Over! ${winner} won${reason ? ` (${reason})` : ''}.`);
                     setIsPlaying(false);
                     if (reason === 'abandonment') setOpponentLeft(true);
+                    playSound('game-end');
 
                     // End game in DB
                     if (gameId) {
@@ -476,6 +507,7 @@ export default function GamePage() {
                     setChatMessages(prev => [...prev, { sender: "opponent", text: message.payload.message }]);
                     if (!mobileChatOpenRef.current) {
                         setHasUnreadMessages(true);
+                        playSound('notify');
                     }
                     break;
                 }
@@ -538,6 +570,7 @@ export default function GamePage() {
                     // Opponent wants a rematch — show the accept/decline popup with 15s countdown
                     if (rematchPopupTimerRef.current) clearInterval(rematchPopupTimerRef.current);
                     setShowRematchPopup(true);
+                    playSound('notify');
                     let cd = 15;
                     setRematchPopupCountdown(cd);
                     rematchPopupTimerRef.current = setInterval(() => {
@@ -566,7 +599,7 @@ export default function GamePage() {
 
         socket.addEventListener('message', handleMessage);
         return () => socket.removeEventListener('message', handleMessage);
-    }, [socket, chess, isPlaying, saveMoveInDB, endGameInDB, initializeWebRTC])
+    }, [socket, chess, isPlaying, saveMoveInDB, endGameInDB, initializeWebRTC, playSound])
 
     useEffect(() => {
         if (status) {
@@ -1113,6 +1146,19 @@ export default function GamePage() {
                                 <ChessBoard chess={chess} setBoard={setBoard} socket={socket} board={board} playerColor={playerColor} onMove={(moveInfo) => {
                                     setMoveHistory(chess.history());
                                     setActiveColor(chess.turn() === 'w' ? 'white' : 'black');
+
+                                    // Play appropriate sound for self-move
+                                    if (chess.isCheck()) {
+                                        playSound('move-check');
+                                    } else if (moveInfo.notation.includes('x')) {
+                                        playSound('capture');
+                                    } else if (moveInfo.notation === 'O-O' || moveInfo.notation === 'O-O-O') {
+                                        playSound('castle');
+                                    } else if (moveInfo.notation.includes('=')) {
+                                        playSound('promote');
+                                    } else {
+                                        playSound('move-self');
+                                    }
                                     // Save our own move to DB
                                     if (currentGameId && moveInfo) {
                                         saveMoveInDB({
