@@ -7,7 +7,7 @@ import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
 import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
-import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle } from "@tabler/icons-react";
+import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical } from "@tabler/icons-react";
 
 type UserProfile = {
     id: string;
@@ -39,8 +39,12 @@ export default function GamePage() {
     const [playerColor, setPlayerColor] = useState<string | null>(null);
     const [mobileChatOpen, setMobileChatOpen] = useState(false);
     const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
     const mobileChatOpenRef = useRef(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
     const [moveHistory, setMoveHistory] = useState<string[]>([]);
     const [whiteTime, setWhiteTime] = useState(10 * 60 * 1000); // ms
     const [blackTime, setBlackTime] = useState(10 * 60 * 1000);
@@ -70,6 +74,19 @@ export default function GamePage() {
             setHasUnreadMessages(false);
         }
     }, [mobileChatOpen]);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setMenuOpen(false);
+            }
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+                setMobileMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Fetch user profile on mount
     useEffect(() => {
@@ -488,6 +505,31 @@ export default function GamePage() {
         setStatus("Searching for an opponent...");
     }
 
+    function handleResign(playNext: boolean) {
+        if (!isPlaying || !socket || !currentGameId) return;
+
+        const winner = playerColor === 'white' ? 'black' : 'white';
+        endGameInDB(currentGameId, winner, "resignation", chess.pgn());
+
+        socket.send(JSON.stringify({
+            type: GAME_OVER,
+            payload: { winner, reason: "resignation", gameId: currentGameId }
+        }));
+
+        setGameOverDetails({ winner, reason: "resignation" });
+        setStatus(`You resigned. ${winner} won.`);
+        setIsPlaying(false);
+        setMenuOpen(false);
+        setMobileMenuOpen(false);
+
+        if (playNext) {
+            setGameOverDetails(null);
+            handlePlay();
+        } else {
+            router.push('/lobby');
+        }
+    }
+
     // Determine which timer belongs to whom based on player's color
     const opponentTime = playerColor === 'white' ? blackTime : whiteTime;
     const yourTime = playerColor === 'white' ? whiteTime : blackTime;
@@ -610,6 +652,36 @@ export default function GamePage() {
                                 className="w-full px-4 py-3 rounded-xl border dark:border-red-500/30 border-red-400/30 dark:text-red-400 text-red-500 font-semibold text-sm dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
                             >
                                 Quit Match
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Desktop Game Options/Resign Modal */}
+            {/* Game Options/Resign Modal (Desktop & Mobile) */}
+            {(menuOpen || mobileMenuOpen) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                    <div className="dark:bg-neutral-900 bg-white rounded-2xl border dark:border-white/10 border-black/10 p-6 max-w-sm w-full mx-4 shadow-2xl text-center">
+                        <h2 className="text-xl font-bold dark:text-white text-neutral-900 mb-4">Game Options</h2>
+                        <div className="flex flex-col gap-2">
+                            <button
+                                onClick={() => handleResign(false)}
+                                className="w-full px-4 py-3 rounded-xl border dark:border-red-500/30 border-red-400/30 dark:text-red-400 text-red-500 font-semibold text-sm dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                            >
+                                Resign & Quit
+                            </button>
+                            <button
+                                onClick={() => handleResign(true)}
+                                className="w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors"
+                            >
+                                Resign & Play Next
+                            </button>
+                            <button
+                                onClick={() => setMenuOpen(false)}
+                                className="w-full px-4 py-3 border dark:border-white/10 border-black/10 rounded-xl text-neutral-400 hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium mt-2"
+                            >
+                                Cancel
                             </button>
                         </div>
                     </div>
@@ -801,6 +873,14 @@ export default function GamePage() {
                                             )}
                                         </span>
                                     </div>
+                                    {isPlaying && (
+                                        <button
+                                            onClick={() => setMenuOpen(true)}
+                                            className="hidden lg:flex p-1.5 rounded-lg hover:bg-white/10 transition-colors ml-2"
+                                        >
+                                            <IconDotsVertical className="w-5 h-5 dark:text-neutral-400 text-neutral-500" />
+                                        </button>
+                                    )}
                                 </div>
                                 <div className={`dark:bg-neutral-800 bg-neutral-200 w-16 h-6 sm:w-24 sm:h-8 lg:w-28 lg:h-9 rounded-md shadow-inner border flex items-center justify-center transition-colors ${isYourActive && isPlaying ? 'border-green-500/30 bg-green-500/10' : 'dark:border-white/5 border-black/10'}`}>
                                     <span className={`font-mono text-xs sm:text-sm lg:text-base font-semibold ${yourTime <= 30000 && isPlaying ? 'text-red-400' : 'text-green-400'}`}>{formatTime(yourTime)}</span>
@@ -808,7 +888,7 @@ export default function GamePage() {
                             </div>
 
                             {/* Play Button (desktop) */}
-                            <div className="hidden lg:block">
+                            <div className="hidden lg:block relative" ref={menuRef}>
                                 <Button
                                     onClick={handlePlay}
                                     disabled={isSearching || isPlaying}
@@ -887,14 +967,26 @@ export default function GamePage() {
                         <IconHistory className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" />
                         <span className="text-[9px] sm:text-xs text-neutral-500">History</span>
                     </button>
-                    <button
-                        onClick={handlePlay}
-                        disabled={isSearching || isPlaying}
-                        className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
-                    >
-                        <IconSwords className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
-                        <span className="text-[9px] sm:text-xs text-green-400 font-medium">{isSearching ? 'Searching' : isPlaying ? 'Playing' : 'Find Match'}</span>
-                    </button>
+                    {!isPlaying ? (
+                        <button
+                            onClick={handlePlay}
+                            disabled={isSearching}
+                            className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
+                        >
+                            <IconSwords className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
+                            <span className="text-[9px] sm:text-xs text-green-400 font-medium">{isSearching ? 'Searching' : 'Find Match'}</span>
+                        </button>
+                    ) : (
+                        <div className="relative flex flex-col items-center">
+                            <button
+                                onClick={() => setMenuOpen(true)}
+                                className="flex flex-col items-center gap-0.5 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                            >
+                                <IconDotsVertical className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-400" />
+                                <span className="text-[9px] sm:text-xs text-neutral-400 font-medium">Options</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
             </div>
