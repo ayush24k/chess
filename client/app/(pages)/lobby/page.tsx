@@ -369,17 +369,18 @@ export default function LobbyPage() {
                                     <h3 className="text-xs font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400 mb-3">Quick Actions</h3>
                                     <div className="flex flex-col gap-1.5">
                                         {[
-                                            { icon: IconTrophy, label: "Leaderboard", color: "text-yellow-400" },
-                                            { icon: IconHistory, label: "Game History", color: "dark:text-neutral-400 text-neutral-500" },
-                                            { icon: IconUsers, label: "Find Friends", color: "text-blue-400" },
+                                            { icon: IconTrophy, label: "Leaderboard", href: "/leaderboard", color: "text-yellow-400" },
+                                            { icon: IconHistory, label: "Game History", href: "/history", color: "dark:text-neutral-400 text-neutral-500" },
+                                            { icon: IconUsers, label: "Find Friends", href: "/friends", color: "text-blue-400" },
                                         ].map((action) => (
-                                            <button
+                                            <Link
                                                 key={action.label}
+                                                href={action.href}
                                                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-left"
                                             >
                                                 <action.icon className={`w-4.5 h-4.5 ${action.color}`} />
                                                 <span className="text-sm dark:text-neutral-300 text-neutral-700">{action.label}</span>
-                                            </button>
+                                            </Link>
                                         ))}
                                     </div>
                                 </div>
