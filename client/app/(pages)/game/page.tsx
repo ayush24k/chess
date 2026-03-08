@@ -62,6 +62,7 @@ export default function GamePage() {
     const localStreamRef = useRef<MediaStream | null>(null);
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const iceCandidateQueueRef = useRef<RTCIceCandidate[]>([]);
+    const negotiationChainRef = useRef<Promise<void>>(Promise.resolve());
 
     useEffect(() => {
         mobileChatOpenRef.current = mobileChatOpen;
@@ -167,8 +168,11 @@ export default function GamePage() {
         // Close any existing peer connection cleanly
         if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
         }
         iceCandidateQueueRef.current = [];
+        // Reset the negotiation chain so stale operations from a previous game don't interfere
+        negotiationChainRef.current = Promise.resolve();
 
         // Build ICE servers list
         const iceServers: RTCIceServer[] = [
@@ -226,6 +230,12 @@ export default function GamePage() {
             }
         }
 
+        // Bail out if a newer initializeWebRTC call has already replaced this peer connection
+        if (peerConnectionRef.current !== pc) {
+            stream?.getTracks().forEach((t) => t.stop());
+            return;
+        }
+
         if (stream) {
             localStreamRef.current = stream;
             if (localVideoRef.current) localVideoRef.current.srcObject = stream;
@@ -235,6 +245,8 @@ export default function GamePage() {
 
         if (color === 'white') {
             const offer = await pc.createOffer();
+            // Final stale check before committing
+            if (peerConnectionRef.current !== pc) return;
             await pc.setLocalDescription(offer);
             if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: WEBRTC_OFFER, payload: offer }));
@@ -363,44 +375,45 @@ export default function GamePage() {
                     break;
                 }
                 case WEBRTC_OFFER: {
-                    const handleOffer = async () => {
+                    negotiationChainRef.current = negotiationChainRef.current.then(async () => {
                         const pc = peerConnectionRef.current;
                         if (!pc) return;
-                        // Only accept an offer when stable (not mid-negotiation)
-                        if (pc.signalingState !== 'stable') {
-                            console.warn('Ignoring WEBRTC_OFFER in state:', pc.signalingState);
-                            return;
+                        try {
+                            if (pc.signalingState !== 'stable') {
+                                await pc.setLocalDescription({ type: 'rollback' });
+                            }
+                            await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                            for (const candidate of iceCandidateQueueRef.current) {
+                                await pc.addIceCandidate(candidate).catch(console.error);
+                            }
+                            iceCandidateQueueRef.current = [];
+                            const answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            socket.send(JSON.stringify({ type: WEBRTC_ANSWER, payload: answer }));
+                        } catch (err) {
+                            console.error('Error handling WEBRTC_OFFER:', err);
                         }
-                        await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
-                        // Drain ICE candidates that arrived before the offer was processed
-                        for (const candidate of iceCandidateQueueRef.current) {
-                            await pc.addIceCandidate(candidate).catch(console.error);
-                        }
-                        iceCandidateQueueRef.current = [];
-                        const answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        socket.send(JSON.stringify({ type: WEBRTC_ANSWER, payload: answer }));
-                    };
-                    handleOffer();
+                    });
                     break;
                 }
                 case WEBRTC_ANSWER: {
-                    const handleAnswer = async () => {
+                    negotiationChainRef.current = negotiationChainRef.current.then(async () => {
                         const pc = peerConnectionRef.current;
                         if (!pc) return;
-                        // Only apply an answer when we're waiting for one
                         if (pc.signalingState !== 'have-local-offer') {
                             console.warn('Ignoring WEBRTC_ANSWER in state:', pc.signalingState);
                             return;
                         }
-                        await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
-                        // Drain ICE candidates that arrived before the answer was processed
-                        for (const candidate of iceCandidateQueueRef.current) {
-                            await pc.addIceCandidate(candidate).catch(console.error);
+                        try {
+                            await pc.setRemoteDescription(new RTCSessionDescription(message.payload));
+                            for (const candidate of iceCandidateQueueRef.current) {
+                                await pc.addIceCandidate(candidate).catch(console.error);
+                            }
+                            iceCandidateQueueRef.current = [];
+                        } catch (err) {
+                            console.error('Error handling WEBRTC_ANSWER:', err);
                         }
-                        iceCandidateQueueRef.current = [];
-                    };
-                    handleAnswer();
+                    });
                     break;
                 }
                 case WEBRTC_ICE: {
