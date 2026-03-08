@@ -89,8 +89,8 @@ export default function GamePage() {
                 soundCache.current.set(name, audio);
             }
             audio.currentTime = 0;
-            audio.play().catch(() => {});
-        } catch {}
+            audio.play().catch(() => { });
+        } catch { }
     }, []);
 
     useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
@@ -664,8 +664,6 @@ export default function GamePage() {
             socket.send(JSON.stringify({ type: PLAYER_QUIT }));
         }
 
-        setGameOverDetails({ winner, reason: 'resignation' });
-        setStatus(`You resigned. ${winner} won.`);
         setIsPlaying(false);
         isPlayingRef.current = false;
         setMenuOpen(false);
@@ -675,9 +673,21 @@ export default function GamePage() {
         cleanupWebRTCAndMedia();
 
         if (playNext) {
+            // Skip game-over modal entirely — go straight to matchmaking
             setGameOverDetails(null);
-            handlePlay();
+            setRatingChanges(null);
+            // Call findMatch directly — handlePlay() guard checks isPlaying which
+            // is still true (batched state), so bypass it
+            findMatch({
+                userId: userProfile?.id || (session?.user as any)?.id || 'anonymous',
+                name: userProfile?.username || session?.user?.name || 'Guest',
+                rating: userProfile?.rating || 500,
+            });
+            setStatus("Searching for an opponent...");
         } else {
+            setGameOverDetails({ winner, reason: 'resignation' });
+            setStatus(`You resigned. ${winner} won.`);
+            playSound('game-end');
             disconnectSocket();
             router.push('/lobby');
         }
@@ -817,24 +827,23 @@ export default function GamePage() {
                                             }
                                         }, 1000);
                                     }}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl border transition-colors font-semibold text-xs sm:text-sm ${
-                                        opponentLeft
-                                            ? 'border-neutral-500/30 text-neutral-500 cursor-not-allowed opacity-60'
-                                            : rematchStatus === 'declined'
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl border transition-colors font-semibold text-xs sm:text-sm ${opponentLeft
+                                        ? 'border-neutral-500/30 text-neutral-500 cursor-not-allowed opacity-60'
+                                        : rematchStatus === 'declined'
                                             ? 'border-red-500/30 text-red-400 cursor-not-allowed'
                                             : rematchStatus === 'requested'
-                                            ? 'border-yellow-500/30 text-yellow-400 cursor-not-allowed'
-                                            : 'dark:border-green-500/30 border-green-400/30 text-green-500 hover:bg-green-500/10'
-                                    }`}
+                                                ? 'border-yellow-500/30 text-yellow-400 cursor-not-allowed'
+                                                : 'dark:border-green-500/30 border-green-400/30 text-green-500 hover:bg-green-500/10'
+                                        }`}
                                 >
                                     <IconHistory className="w-4 h-4" />
                                     {opponentLeft
                                         ? 'User Left'
                                         : rematchStatus === 'requested'
-                                        ? `Waiting... (${rematchCountdown}s)`
-                                        : rematchStatus === 'declined'
-                                        ? 'Declined'
-                                        : 'Play Again'}
+                                            ? `Waiting... (${rematchCountdown}s)`
+                                            : rematchStatus === 'declined'
+                                                ? 'Declined'
+                                                : 'Play Again'}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -1210,15 +1219,17 @@ export default function GamePage() {
                             </div>
 
                             {/* Play Button (desktop) */}
-                            <div className="hidden lg:block relative" ref={menuRef}>
-                                <Button
-                                    onClick={handlePlay}
-                                    disabled={isSearching || isPlaying}
-                                    className="w-full bg-green-500 hover:bg-green-400 text-neutral-900 font-bold py-3 rounded-xl transition-all shadow-xl hover:shadow-green-500/20 text-base tracking-wide uppercase"
-                                >
-                                    {isSearching ? "Searching..." : isPlaying ? "In Progress" : "Find Match"}
-                                </Button>
-                            </div>
+                            {!isPlaying && (
+                                <div className="hidden lg:block relative" ref={menuRef}>
+                                    <Button
+                                        onClick={handlePlay}
+                                        disabled={isSearching}
+                                        className="w-full bg-green-500 hover:bg-green-400 text-neutral-900 font-bold py-3 rounded-xl transition-all shadow-xl hover:shadow-green-500/20 text-base tracking-wide uppercase"
+                                    >
+                                        {isSearching ? "Searching..." : "Find Match"}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -1237,9 +1248,11 @@ export default function GamePage() {
                                     </div>
                                 ) : (
                                     chatMessages.map((msg, idx) => (
-                                        <div key={idx} className={`max-w-[90%] px-2 py-1.5 rounded-lg text-[11px] ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm text-white' : 'dark:bg-neutral-700 bg-neutral-300 self-start rounded-tl-sm border dark:border-white/10 border-black/10'}`}>
-                                            <span className="text-[9px] opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : opponentName}</span>
-                                            <span className="dark:text-white/90 text-neutral-800">{msg.text}</span>
+                                        <div key={idx} className="w-full text-[11px] py-0.5 flex items-start gap-1">
+                                            <span className={`font-semibold shrink-0 ${msg.sender === 'you' ? 'text-green-500' : 'text-blue-500'}`}>
+                                                {msg.sender === 'you' ? yourName : opponentName}:
+                                            </span>
+                                            <span className="dark:text-neutral-300 text-neutral-700 break-words">{msg.text}</span>
                                         </div>
                                     ))
                                 )}
@@ -1330,9 +1343,11 @@ export default function GamePage() {
                             </div>
                         ) : (
                             chatMessages.map((msg, idx) => (
-                                <div key={idx} className={`max-w-[85%] px-3 py-2 rounded-xl text-white/90 text-sm ${msg.sender === 'you' ? 'bg-green-600 self-end rounded-tr-sm' : 'bg-neutral-800 self-start rounded-tl-sm border border-white/10'}`}>
-                                    <span className="text-xs opacity-50 block mb-0.5">{msg.sender === 'you' ? 'You' : opponentName}</span>
-                                    {msg.text}
+                                <div key={idx} className="w-full text-sm py-1 bg-transparent flex items-start gap-1.5">
+                                    <span className={`font-semibold shrink-0 ${msg.sender === 'you' ? 'text-green-500' : 'text-blue-500'}`}>
+                                        {msg.sender === 'you' ? yourName : opponentName}:
+                                    </span>
+                                    <span className="text-white/90 break-words">{msg.text}</span>
                                 </div>
                             ))
                         )}
