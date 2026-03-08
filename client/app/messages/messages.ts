@@ -9,3 +9,6 @@ export const WEBRTC_OFFER = "webrtc_offer";
 export const WEBRTC_ANSWER = "webrtc_answer";
 export const PLAYER_COUNT = "player_count";
 export const PLAYER_QUIT = "player_quit";
+export const PLAY_AGAIN_REQUEST = "play_again_request";
+export const PLAY_AGAIN_RESPONSE = "play_again_response";
+export const PLAY_AGAIN_CANCELLED = "play_again_cancelled";

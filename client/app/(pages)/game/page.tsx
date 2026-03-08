@@ -6,7 +6,7 @@ import { useSocketContext } from "@/app/contexts/SocketContext";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_QUIT } from "../../messages/messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_QUIT, PLAY_AGAIN_REQUEST, PLAY_AGAIN_RESPONSE, PLAY_AGAIN_CANCELLED } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical, IconChess } from "@tabler/icons-react";
 
 type UserProfile = {
@@ -58,6 +58,11 @@ export default function GamePage() {
     const [ratingChanges, setRatingChanges] = useState<{ white: { old: number; new: number }; black: { old: number; new: number } } | null>(null);
     const [gameOverDetails, setGameOverDetails] = useState<{ winner: string; reason: string } | null>(null);
     const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+    const [opponentLeft, setOpponentLeft] = useState(false);
+    const [rematchStatus, setRematchStatus] = useState<'idle' | 'requested' | 'declined'>('idle');
+    const [rematchCountdown, setRematchCountdown] = useState(15);
+    const [showRematchPopup, setShowRematchPopup] = useState(false);
+    const [rematchPopupCountdown, setRematchPopupCountdown] = useState(15);
 
     const localVideoRef = useRef<HTMLVideoElement>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -71,8 +76,18 @@ export default function GamePage() {
     const isPlayingRef = useRef(false);
     // Track which game IDs we've already created in DB to avoid duplicates
     const createdGameIdsRef = useRef<Set<string>>(new Set());
+    const rematchTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const rematchPopupTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+    // Clean up rematch timers on unmount
+    useEffect(() => {
+        return () => {
+            if (rematchTimerRef.current) clearInterval(rematchTimerRef.current);
+            if (rematchPopupTimerRef.current) clearInterval(rematchPopupTimerRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         mobileChatOpenRef.current = mobileChatOpen;
@@ -350,6 +365,8 @@ export default function GamePage() {
         setPlayerColor(matchData.color);
         setGameOverDetails(null);
         setRatingChanges(null);
+        setOpponentLeft(false);
+        setRematchStatus('idle');
         setCurrentGameId(matchData.gameId);
         setOpponentInfo(matchData.opponent);
 
@@ -397,6 +414,11 @@ export default function GamePage() {
                         setPlayerColor(message.payload.color);
                         setGameOverDetails(null);
                         setRatingChanges(null);
+                        setOpponentLeft(false);
+                        setRematchStatus('idle');
+                        setShowRematchPopup(false);
+                        if (rematchTimerRef.current) { clearInterval(rematchTimerRef.current); rematchTimerRef.current = null; }
+                        if (rematchPopupTimerRef.current) { clearInterval(rematchPopupTimerRef.current); rematchPopupTimerRef.current = null; }
                         setCurrentGameId(message.payload.gameId);
                         if (message.payload.opponent) {
                             setOpponentInfo(message.payload.opponent);
@@ -440,6 +462,7 @@ export default function GamePage() {
                     setGameOverDetails({ winner, reason });
                     setStatus(`Game Over! ${winner} won${reason ? ` (${reason})` : ''}.`);
                     setIsPlaying(false);
+                    if (reason === 'abandonment') setOpponentLeft(true);
 
                     // End game in DB
                     if (gameId) {
@@ -509,6 +532,33 @@ export default function GamePage() {
                             iceCandidateQueueRef.current.push(new RTCIceCandidate(message.payload));
                         }
                     }
+                    break;
+                }
+                case PLAY_AGAIN_REQUEST: {
+                    // Opponent wants a rematch — show the accept/decline popup with 15s countdown
+                    if (rematchPopupTimerRef.current) clearInterval(rematchPopupTimerRef.current);
+                    setShowRematchPopup(true);
+                    let cd = 15;
+                    setRematchPopupCountdown(cd);
+                    rematchPopupTimerRef.current = setInterval(() => {
+                        cd--;
+                        setRematchPopupCountdown(cd);
+                        if (cd <= 0) {
+                            clearInterval(rematchPopupTimerRef.current!);
+                            rematchPopupTimerRef.current = null;
+                            setShowRematchPopup(false);
+                            if (socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({ type: PLAY_AGAIN_RESPONSE, payload: { accepted: false } }));
+                            }
+                        }
+                    }, 1000);
+                    break;
+                }
+                case PLAY_AGAIN_CANCELLED: {
+                    // Our rematch request was declined or opponent left before we could rematch
+                    if (rematchTimerRef.current) { clearInterval(rematchTimerRef.current); rematchTimerRef.current = null; }
+                    setRematchStatus('declined');
+                    setTimeout(() => setRematchStatus('idle'), 3000);
                     break;
                 }
             }
@@ -715,16 +765,43 @@ export default function GamePage() {
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-2 w-full">
                                 <button
+                                    disabled={opponentLeft || rematchStatus === 'requested'}
                                     onClick={() => {
-                                        setGameOverDetails(null);
-                                        setRatingChanges(null);
-                                        // Play Again effectively acts same as find Match in this setup
-                                        handlePlay();
+                                        if (opponentLeft || rematchStatus === 'requested') return;
+                                        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+                                        socket.send(JSON.stringify({ type: PLAY_AGAIN_REQUEST }));
+                                        setRematchStatus('requested');
+                                        let cd = 15;
+                                        setRematchCountdown(cd);
+                                        if (rematchTimerRef.current) clearInterval(rematchTimerRef.current);
+                                        rematchTimerRef.current = setInterval(() => {
+                                            cd--;
+                                            setRematchCountdown(cd);
+                                            if (cd <= 0) {
+                                                clearInterval(rematchTimerRef.current!);
+                                                rematchTimerRef.current = null;
+                                                setRematchStatus('idle');
+                                            }
+                                        }, 1000);
                                     }}
-                                    className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl border dark:border-green-500/30 border-green-400/30 text-green-500 hover:bg-green-500/10 transition-colors font-semibold text-xs sm:text-sm"
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl border transition-colors font-semibold text-xs sm:text-sm ${
+                                        opponentLeft
+                                            ? 'border-neutral-500/30 text-neutral-500 cursor-not-allowed opacity-60'
+                                            : rematchStatus === 'declined'
+                                            ? 'border-red-500/30 text-red-400 cursor-not-allowed'
+                                            : rematchStatus === 'requested'
+                                            ? 'border-yellow-500/30 text-yellow-400 cursor-not-allowed'
+                                            : 'dark:border-green-500/30 border-green-400/30 text-green-500 hover:bg-green-500/10'
+                                    }`}
                                 >
                                     <IconHistory className="w-4 h-4" />
-                                    Play Again
+                                    {opponentLeft
+                                        ? 'User Left'
+                                        : rematchStatus === 'requested'
+                                        ? `Waiting... (${rematchCountdown}s)`
+                                        : rematchStatus === 'declined'
+                                        ? 'Declined'
+                                        : 'Play Again'}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -743,6 +820,50 @@ export default function GamePage() {
                                 className="w-full px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:text-white text-neutral-900 font-semibold text-sm dark:hover:bg-white/5 hover:bg-black/5 transition-colors"
                             >
                                 Back to Lobby
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Incoming Rematch Request Popup */}
+            {showRematchPopup && (
+                <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-md">
+                    <div className="dark:bg-neutral-900 bg-white rounded-2xl border dark:border-white/10 border-black/10 p-6 sm:p-8 max-w-sm w-full mx-4 shadow-2xl text-center">
+                        <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+                            <IconSwords className="w-8 h-8 text-green-500" />
+                        </div>
+                        <h2 className="text-xl font-bold dark:text-white text-neutral-900 mb-1">Rematch Request</h2>
+                        <p className="text-sm dark:text-neutral-400 text-neutral-600 mb-3">
+                            <span className="font-semibold dark:text-white text-neutral-800">{opponentName}</span> wants a rematch!
+                        </p>
+                        <p className="text-3xl font-mono font-bold text-green-400 mb-5">{rematchPopupCountdown}s</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    if (rematchPopupTimerRef.current) { clearInterval(rematchPopupTimerRef.current); rematchPopupTimerRef.current = null; }
+                                    setShowRematchPopup(false);
+                                    setGameOverDetails(null);
+                                    setRatingChanges(null);
+                                    if (socket && socket.readyState === WebSocket.OPEN) {
+                                        socket.send(JSON.stringify({ type: PLAY_AGAIN_RESPONSE, payload: { accepted: true } }));
+                                    }
+                                }}
+                                className="flex-1 px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors"
+                            >
+                                Accept
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (rematchPopupTimerRef.current) { clearInterval(rematchPopupTimerRef.current); rematchPopupTimerRef.current = null; }
+                                    setShowRematchPopup(false);
+                                    if (socket && socket.readyState === WebSocket.OPEN) {
+                                        socket.send(JSON.stringify({ type: PLAY_AGAIN_RESPONSE, payload: { accepted: false } }));
+                                    }
+                                }}
+                                className="flex-1 px-4 py-3 rounded-xl border dark:border-red-500/30 border-red-400/30 dark:text-red-400 text-red-500 font-semibold text-sm dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
+                            >
+                                Decline
                             </button>
                         </div>
                     </div>
