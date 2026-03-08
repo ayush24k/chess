@@ -10,8 +10,6 @@ import {
     IconChevronDown,
     IconCamera,
     IconCameraOff,
-    IconMicrophone,
-    IconMicrophoneOff,
     IconPlayerPlay,
     IconTrophy,
     IconHistory,
@@ -63,7 +61,6 @@ export default function LobbyPage() {
     const streamRef = useRef<MediaStream | null>(null)
     const [cameraActive, setCameraActive] = useState(false)
     const [cameraError, setCameraError] = useState<string | null>(null)
-    const [micActive, setMicActive] = useState(false)
 
     // Fetch user stats from DB
     useEffect(() => {
@@ -97,22 +94,15 @@ export default function LobbyPage() {
     // Request webcam
     const startCamera = useCallback(async () => {
         try {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                stream.getAudioTracks().forEach(track => track.enabled = micActive)
-                streamRef.current = stream
-            } catch (err) {
-                // Fallback to video only if mic is unavailable
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                streamRef.current = stream
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+            streamRef.current = stream
             setCameraActive(true)
             setCameraError(null)
         } catch {
             setCameraError("Camera permission denied. Please allow access in your browser settings.")
             setCameraActive(false)
         }
-    }, [micActive])
+    }, [])
 
     const stopCamera = useCallback(() => {
         if (streamRef.current) {
@@ -123,16 +113,6 @@ export default function LobbyPage() {
         setCameraActive(false)
     }, [])
 
-    const toggleMic = useCallback(() => {
-        setMicActive(prev => {
-            const next = !prev
-            if (streamRef.current) {
-                streamRef.current.getAudioTracks().forEach(track => track.enabled = next)
-            }
-            return next
-        })
-    }, [])
-
     // Attach stream to video element after render
     useEffect(() => {
         if (cameraActive && videoRef.current && streamRef.current) {
@@ -140,8 +120,9 @@ export default function LobbyPage() {
         }
     }, [cameraActive])
 
-    // Cleanup on unmount
+    // Auto start camera on mount and cleanup on unmount
     useEffect(() => {
+        startCamera()
         return () => stopCamera()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -461,14 +442,6 @@ export default function LobbyPage() {
                                                 <IconCameraOff className="w-5 h-5" />
                                             </button>
                                         )}
-
-                                        <button
-                                            onClick={toggleMic}
-                                            className={`p-2.5 rounded-full backdrop-blur-sm transition-colors shadow-lg ${micActive ? "bg-green-500/80 hover:bg-green-500 text-neutral-900" : "bg-red-500/80 hover:bg-red-500 text-white"}`}
-                                            title={micActive ? "Turn off mic" : "Turn on mic"}
-                                        >
-                                            {micActive ? <IconMicrophone className="w-5 h-5" /> : <IconMicrophoneOff className="w-5 h-5" />}
-                                        </button>
                                     </div>
 
                                     {/* Live indicator */}
