@@ -7,7 +7,7 @@ import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
 import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_QUIT } from "../../messages/messages";
-import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical } from "@tabler/icons-react";
+import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical, IconChess } from "@tabler/icons-react";
 
 type UserProfile = {
     id: string;
@@ -28,7 +28,7 @@ type OpponentInfo = {
 export default function GamePage() {
     const { data: session } = useSession();
     const router = useRouter();
-    const { socket, isSearching, matchData, findMatch, clearMatch, disconnectSocket } = useSocketContext();
+    const { socket, isSearching, matchData, findMatch, cancelSearch, clearMatch, disconnectSocket } = useSocketContext();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [status, setStatus] = useState("");
@@ -55,7 +55,7 @@ export default function GamePage() {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
     const [currentGameId, setCurrentGameId] = useState<string | null>(null);
-    const [ratingChange, setRatingChange] = useState<{ old: number; new: number } | null>(null);
+    const [ratingChanges, setRatingChanges] = useState<{ white: { old: number; new: number }; black: { old: number; new: number } } | null>(null);
     const [gameOverDetails, setGameOverDetails] = useState<{ winner: string; reason: string } | null>(null);
     const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
@@ -168,10 +168,8 @@ export default function GamePage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                // Show rating change for current player
-                const isWhite = playerColor === "white";
-                const myRating = isWhite ? data.ratings.white : data.ratings.black;
-                setRatingChange(myRating);
+                // Show rating change for both players
+                setRatingChanges(data.ratings);
             }
         } catch (err) {
             console.error("Failed to end game in DB:", err);
@@ -351,7 +349,7 @@ export default function GamePage() {
         setIsPlaying(true);
         setPlayerColor(matchData.color);
         setGameOverDetails(null);
-        setRatingChange(null);
+        setRatingChanges(null);
         setCurrentGameId(matchData.gameId);
         setOpponentInfo(matchData.opponent);
 
@@ -398,7 +396,7 @@ export default function GamePage() {
                         setIsPlaying(true);
                         setPlayerColor(message.payload.color);
                         setGameOverDetails(null);
-                        setRatingChange(null);
+                        setRatingChanges(null);
                         setCurrentGameId(message.payload.gameId);
                         if (message.payload.opponent) {
                             setOpponentInfo(message.payload.opponent);
@@ -660,33 +658,86 @@ export default function GamePage() {
                             {gameOverDetails.reason && ` by ${gameOverDetails.reason}`}
                         </p>
 
-                        {ratingChange && (
-                            <div className="dark:bg-neutral-800/60 bg-neutral-100 rounded-xl p-3 mb-5 border dark:border-white/5 border-black/5">
-                                <p className="text-xs dark:text-neutral-500 text-neutral-400 uppercase tracking-wider mb-1">Rating Change</p>
-                                <div className="flex items-center justify-center gap-2">
-                                    <span className="text-lg font-mono dark:text-neutral-400 text-neutral-500">{ratingChange.old}</span>
-                                    <span className="dark:text-neutral-600 text-neutral-300">→</span>
-                                    <span className={`text-lg font-mono font-bold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'dark:text-white text-neutral-900'}`}>
-                                        {ratingChange.new}
-                                    </span>
-                                    <span className={`text-sm font-semibold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'dark:text-neutral-400 text-neutral-500'}`}>
-                                        ({ratingChange.new > ratingChange.old ? '+' : ''}{ratingChange.new - ratingChange.old})
-                                    </span>
+                        {ratingChanges && (
+                            <div className="flex flex-col gap-2 mb-5">
+                                <p className="text-[11px] sm:text-xs dark:text-neutral-500 text-neutral-400 uppercase tracking-wider mb-1">Rating Changes</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {/* Your Rating */}
+                                    <div className="dark:bg-neutral-800/60 bg-neutral-100 rounded-xl p-2.5 sm:p-3 border dark:border-white/5 border-black/5 flex flex-col items-center">
+                                        <div className="flex items-center gap-1.5 mb-2 text-[10px] sm:text-xs">
+                                            {session?.user?.image ? (
+                                                <img src={session.user.image} alt="" className="w-4 h-4 rounded-full object-cover border border-green-500/30" />
+                                            ) : (
+                                                <IconUser className="w-3.5 h-3.5 text-green-400" />
+                                            )}
+                                            <span className="dark:text-white/80 text-neutral-700 truncate max-w-[80px]">{yourName}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs sm:text-sm font-mono dark:text-neutral-400 text-neutral-500">{ratingChanges[playerColor as 'white' | 'black']?.old}</span>
+                                                <span className="dark:text-neutral-600 text-neutral-300 text-[10px] sm:text-xs">→</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className={`text-xs sm:text-sm font-mono font-bold ${ratingChanges[playerColor as 'white' | 'black']?.new > ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-green-400' : ratingChanges[playerColor as 'white' | 'black']?.new < ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-red-400' : 'dark:text-white text-neutral-900'}`}>
+                                                    {ratingChanges[playerColor as 'white' | 'black']?.new}
+                                                </span>
+                                                <span className={`text-[9px] sm:text-[10px] font-semibold ${ratingChanges[playerColor as 'white' | 'black']?.new > ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-green-400' : ratingChanges[playerColor as 'white' | 'black']?.new < ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-red-400' : 'dark:text-neutral-400 text-neutral-500'}`}>
+                                                    ({ratingChanges[playerColor as 'white' | 'black']?.new > ratingChanges[playerColor as 'white' | 'black']?.old ? '+' : ''}{ratingChanges[playerColor as 'white' | 'black']?.new - ratingChanges[playerColor as 'white' | 'black']?.old})
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {/* Opponent Rating */}
+                                    <div className="dark:bg-neutral-800/60 bg-neutral-100 rounded-xl p-2.5 sm:p-3 border dark:border-white/5 border-black/5 flex flex-col items-center">
+                                        <div className="flex items-center gap-1.5 mb-2 text-[10px] sm:text-xs">
+                                            <IconUser className="w-3.5 h-3.5 dark:text-neutral-400 text-neutral-500" />
+                                            <span className="dark:text-white/80 text-neutral-700 truncate max-w-[80px]">{opponentName}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs sm:text-sm font-mono dark:text-neutral-400 text-neutral-500">{ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old}</span>
+                                                <span className="dark:text-neutral-600 text-neutral-300 text-[10px] sm:text-xs">→</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <span className={`text-xs sm:text-sm font-mono font-bold ${ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new > ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old ? 'text-green-400' : ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new < ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old ? 'text-red-400' : 'dark:text-white text-neutral-900'}`}>
+                                                    {ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new}
+                                                </span>
+                                                <span className={`text-[9px] sm:text-[10px] font-semibold ${ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new > ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old ? 'text-green-400' : ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new < ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old ? 'text-red-400' : 'dark:text-neutral-400 text-neutral-500'}`}>
+                                                    ({ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new > ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old ? '+' : ''}{ratingChanges[playerColor === 'white' ? 'black' : 'white']?.new - ratingChanges[playerColor === 'white' ? 'black' : 'white']?.old})
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         <div className="flex flex-col gap-2">
-                            <button
-                                onClick={() => {
-                                    setGameOverDetails(null);
-                                    setRatingChange(null);
-                                    handlePlay();
-                                }}
-                                className="w-full px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-sm transition-colors"
-                            >
-                                Play Again
-                            </button>
+                            <div className="flex gap-2 w-full">
+                                <button
+                                    onClick={() => {
+                                        setGameOverDetails(null);
+                                        setRatingChanges(null);
+                                        // Play Again effectively acts same as find Match in this setup
+                                        handlePlay();
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl border dark:border-green-500/30 border-green-400/30 text-green-500 hover:bg-green-500/10 transition-colors font-semibold text-xs sm:text-sm"
+                                >
+                                    <IconHistory className="w-4 h-4" />
+                                    Play Again
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setGameOverDetails(null);
+                                        setRatingChanges(null);
+                                        handlePlay();
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-neutral-900 font-semibold text-xs sm:text-sm transition-colors"
+                                >
+                                    <IconSwords className="w-4 h-4" />
+                                    Play Next
+                                </button>
+                            </div>
                             <button
                                 onClick={() => router.push('/lobby')}
                                 className="w-full px-4 py-3 rounded-xl border dark:border-white/10 border-black/10 dark:text-white text-neutral-900 font-semibold text-sm dark:hover:bg-white/5 hover:bg-black/5 transition-colors"
@@ -694,6 +745,38 @@ export default function GamePage() {
                                 Back to Lobby
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Matchmaking Overlay — shown while searching for next opponent */}
+            {isSearching && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md">
+                    <div className="flex flex-col items-center gap-6 text-center">
+                        {/* Spinner */}
+                        <div className="relative w-20 h-20">
+                            <div className="absolute inset-0 rounded-full border-4 border-green-500/20" />
+                            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <IconChess className="w-8 h-8 text-green-500" />
+                            </div>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-white mb-2">Finding a Match...</h2>
+                            <p className="text-sm text-neutral-400">Looking for a worthy opponent</p>
+                        </div>
+                        {/* Animated dots */}
+                        <div className="flex gap-1.5">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:0ms]" />
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:150ms]" />
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-bounce [animation-delay:300ms]" />
+                        </div>
+                        <button
+                            onClick={cancelSearch}
+                            className="px-6 py-2.5 rounded-xl border border-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium"
+                        >
+                            Cancel
+                        </button>
                     </div>
                 </div>
             )}
@@ -938,9 +1021,9 @@ export default function GamePage() {
                                         <span className="font-bold text-green-400 text-xs sm:text-sm lg:text-sm">{yourName}</span>
                                         <span className="text-[10px] sm:text-xs dark:text-neutral-500 text-neutral-400">
                                             Rating: {yourRating}
-                                            {ratingChange && (
-                                                <span className={`ml-1 font-semibold ${ratingChange.new > ratingChange.old ? 'text-green-400' : ratingChange.new < ratingChange.old ? 'text-red-400' : 'text-neutral-400'}`}>
-                                                    ({ratingChange.new > ratingChange.old ? '+' : ''}{ratingChange.new - ratingChange.old})
+                                            {ratingChanges && (
+                                                <span className={`ml-1 font-semibold ${ratingChanges[playerColor as 'white' | 'black']?.new > ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-green-400' : ratingChanges[playerColor as 'white' | 'black']?.new < ratingChanges[playerColor as 'white' | 'black']?.old ? 'text-red-400' : 'text-neutral-400'}`}>
+                                                    ({ratingChanges[playerColor as 'white' | 'black']?.new > ratingChanges[playerColor as 'white' | 'black']?.old ? '+' : ''}{ratingChanges[playerColor as 'white' | 'black']?.new - ratingChanges[playerColor as 'white' | 'black']?.old})
                                                 </span>
                                             )}
                                         </span>
