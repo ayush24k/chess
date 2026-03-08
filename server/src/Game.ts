@@ -120,15 +120,22 @@ export class Game {
         }
         this.broadcastTime();
         const payload = { winner, reason, gameId: this.gameId };
-        this.player1.send(JSON.stringify({ type: GAME_OVER, payload }));
-        this.player2.send(JSON.stringify({ type: GAME_OVER, payload }));
+        if (this.player1.readyState === WebSocket.OPEN) {
+            this.player1.send(JSON.stringify({ type: GAME_OVER, payload }));
+        }
+        if (this.player2.readyState === WebSocket.OPEN) {
+            this.player2.send(JSON.stringify({ type: GAME_OVER, payload }));
+        }
     }
 
-    public cleanup() {
-        if (this.timerInterval) {
-            clearInterval(this.timerInterval);
-            this.timerInterval = null;
-        }
+    public isGameOver() {
+        return this.gameOver;
+    }
+
+    public handlePlayerQuit(socket: WebSocket) {
+        if (this.gameOver) return;
+        const winner = socket === this.player1 ? 'black' : 'white';
+        this.endGame(winner, 'abandonment');
     }
 
     public makeMove(socket: WebSocket, move: {

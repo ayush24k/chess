@@ -17,6 +17,7 @@ type SocketContextType = {
     findMatch: (playerInfo: { userId: string; name: string; rating: number }) => void;
     cancelSearch: () => void;
     clearMatch: () => void;
+    disconnectSocket: () => void;
 };
 
 const SocketContext = createContext<SocketContextType>({
@@ -27,6 +28,7 @@ const SocketContext = createContext<SocketContextType>({
     findMatch: () => {},
     cancelSearch: () => {},
     clearMatch: () => {},
+    disconnectSocket: () => {},
 });
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
@@ -101,8 +103,19 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setMatchData(null);
     }, []);
 
+    const disconnectSocket = useCallback(() => {
+        if (socketRef.current) {
+            socketRef.current.close();
+            socketRef.current = null;
+        }
+        setSocket(null);
+        setIsSearching(false);
+        searchingRef.current = false;
+        setMatchData(null);
+    }, []);
+
     return (
-        <SocketContext.Provider value={{ socket, isConnected: !!socket, isSearching, matchData, findMatch, cancelSearch, clearMatch }}>
+        <SocketContext.Provider value={{ socket, isConnected: !!socket, isSearching, matchData, findMatch, cancelSearch, clearMatch, disconnectSocket }}>
             {children}
         </SocketContext.Provider>
     );

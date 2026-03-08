@@ -7,3 +7,4 @@ export const WEBRTC_ICE = "webrtc_ice";
 export const WEBRTC_OFFER = "webrtc_offer";
 export const WEBRTC_ANSWER = "webrtc_answer";
 export const PLAYER_COUNT = "player_count";
+export const PLAYER_QUIT = "player_quit";

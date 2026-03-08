@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_COUNT } from "./messages";
+import { INIT_GAME, MOVE, CHAT, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_COUNT, PLAYER_QUIT } from "./messages";
 import { Game, PlayerInfo } from "./Game";
 
 export class GameManager {
@@ -29,7 +29,18 @@ export class GameManager {
             this.pendingUser = null;
         }
 
+        // End any active game this socket was part of
+        this.endGameForSocket(socket);
+
         this.broadcastPlayerCount();
+    }
+
+    private endGameForSocket(socket: WebSocket) {
+        const game = this.games.find((g) => g.player1 === socket || g.player2 === socket);
+        if (game && !game.isGameOver()) {
+            game.handlePlayerQuit(socket);
+            this.games = this.games.filter((g) => g !== game);
+        }
     }
 
     private broadcastPlayerCount() {
@@ -102,6 +113,10 @@ export class GameManager {
                 if (game) {
                     game.handleWebRTC(socket, message.type, message.payload);
                 }
+            }
+
+            if (message.type === PLAYER_QUIT) {
+                this.endGameForSocket(socket);
             }
         })
     }

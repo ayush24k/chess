@@ -6,7 +6,7 @@ import { useSocketContext } from "@/app/contexts/SocketContext";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
-import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER } from "../../messages/messages";
+import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_QUIT } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical } from "@tabler/icons-react";
 
 type UserProfile = {
@@ -28,7 +28,7 @@ type OpponentInfo = {
 export default function GamePage() {
     const { data: session } = useSession();
     const router = useRouter();
-    const { socket, isSearching, matchData, findMatch, clearMatch } = useSocketContext();
+    const { socket, isSearching, matchData, findMatch, clearMatch, disconnectSocket } = useSocketContext();
     const [chess, setChess] = useState(new Chess());
     const [board, setBoard] = useState(chess.board());
     const [status, setStatus] = useState("");
@@ -67,6 +67,12 @@ export default function GamePage() {
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
     const iceCandidateQueueRef = useRef<RTCIceCandidate[]>([]);
     const negotiationChainRef = useRef<Promise<void>>(Promise.resolve());
+    // Ref mirror of isPlaying so cleanup effects can read the real current value
+    const isPlayingRef = useRef(false);
+    // Track which game IDs we've already created in DB to avoid duplicates
+    const createdGameIdsRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
     useEffect(() => {
         mobileChatOpenRef.current = mobileChatOpen;
@@ -180,6 +186,64 @@ export default function GamePage() {
         }
     }, []);
 
+    // Stop media tracks and close WebRTC — does NOT touch socket
+    const cleanupWebRTCAndMedia = useCallback(() => {
+        if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+            peerConnectionRef.current = null;
+        }
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach((t) => t.stop());
+            localStreamRef.current = null;
+        }
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+        if (mobileLocalVideoRef.current) mobileLocalVideoRef.current.srcObject = null;
+        if (mobileRemoteVideoRef.current) mobileRemoteVideoRef.current.srcObject = null;
+        negotiationChainRef.current = Promise.resolve();
+        iceCandidateQueueRef.current = [];
+    }, []);
+
+    // Notify server, close WebRTC + socket — no redirect
+    const cleanupConnections = useCallback(() => {
+        // Only send PLAYER_QUIT and close socket if a game was actually in progress.
+        // This prevents React Strict Mode's double-mount from killing the socket on startup.
+        if (isPlayingRef.current) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: PLAYER_QUIT }));
+            }
+            cleanupWebRTCAndMedia();
+            disconnectSocket();
+        } else {
+            // Game not started — only clean up media/WebRTC, leave socket intact
+            cleanupWebRTCAndMedia();
+        }
+    }, [socket, cleanupWebRTCAndMedia, disconnectSocket]);
+
+    // Notify server, close WebRTC + socket, redirect to lobby (explicit user action only)
+    const cleanupAndQuit = useCallback(() => {
+        cleanupConnections();
+        router.push('/lobby');
+    }, [cleanupConnections, router]);
+
+    // Keep a stable ref so effects/event-listeners always use the latest version
+    const cleanupConnectionsRef = useRef(cleanupConnections);
+    useEffect(() => { cleanupConnectionsRef.current = cleanupConnections; }, [cleanupConnections]);
+
+    // Clean up connections when the component unmounts (browser back, route change)
+    // Do NOT redirect here — navigation is already happening
+    useEffect(() => {
+        return () => { cleanupConnectionsRef.current(); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Clean up on browser tab / window close
+    useEffect(() => {
+        const handler = () => cleanupConnectionsRef.current();
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, []);
+
     // Initialize WebRTC for video chat
     const initializeWebRTC = useCallback(async (color: string, ws: WebSocket) => {
         // Close any existing peer connection cleanly
@@ -291,16 +355,22 @@ export default function GamePage() {
         setCurrentGameId(matchData.gameId);
         setOpponentInfo(matchData.opponent);
 
-        // Create game in DB (white only to avoid duplicate)
-        if (matchData.color === 'white' && userProfile) {
-            createGameInDB(matchData.gameId, userProfile.id, matchData.opponent.id);
-        }
-
         console.log("Game initialised:", matchData.gameId, "opponent:", matchData.opponent);
         initializeWebRTC(matchData.color, socket);
         clearMatch();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [matchData, socket]);
+
+    // Create game in DB once we have both the game ID and user profile.
+    // On first match, userProfile loads asynchronously AFTER matchData sets currentGameId,
+    // so the inline createGameInDB calls in the matchData/INIT_GAME handlers would miss it.
+    // This effect retries automatically when userProfile becomes available.
+    useEffect(() => {
+        if (!currentGameId || !userProfile || playerColor !== 'white' || !opponentInfo) return;
+        if (createdGameIdsRef.current.has(currentGameId)) return;
+        createdGameIdsRef.current.add(currentGameId);
+        createGameInDB(currentGameId, userProfile.id, opponentInfo.id);
+    }, [currentGameId, userProfile, playerColor, opponentInfo, createGameInDB]);
 
     // Socket message handler for gameplay messages
     useEffect(() => {
@@ -332,9 +402,6 @@ export default function GamePage() {
                         setCurrentGameId(message.payload.gameId);
                         if (message.payload.opponent) {
                             setOpponentInfo(message.payload.opponent);
-                        }
-                        if (message.payload.color === 'white' && userProfile) {
-                            createGameInDB(message.payload.gameId, userProfile.id, message.payload.opponent?.id);
                         }
                         console.log("Game initialised (fallback):", message.payload.gameId, "opponent:", message.payload.opponent);
                         initializeWebRTC(message.payload.color, socket);
@@ -451,7 +518,7 @@ export default function GamePage() {
 
         socket.addEventListener('message', handleMessage);
         return () => socket.removeEventListener('message', handleMessage);
-    }, [socket, chess, isPlaying, userProfile, createGameInDB, saveMoveInDB, endGameInDB, initializeWebRTC])
+    }, [socket, chess, isPlaying, saveMoveInDB, endGameInDB, initializeWebRTC])
 
     useEffect(() => {
         if (status) {
@@ -506,26 +573,31 @@ export default function GamePage() {
     }
 
     function handleResign(playNext: boolean) {
-        if (!isPlaying || !socket || !currentGameId) return;
+        if (!socket || !currentGameId) return;
 
         const winner = playerColor === 'white' ? 'black' : 'white';
-        endGameInDB(currentGameId, winner, "resignation", chess.pgn());
+        endGameInDB(currentGameId, winner, 'resignation', chess.pgn());
 
-        socket.send(JSON.stringify({
-            type: GAME_OVER,
-            payload: { winner, reason: "resignation", gameId: currentGameId }
-        }));
+        // Tell the server this player quit so the opponent gets GAME_OVER
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: PLAYER_QUIT }));
+        }
 
-        setGameOverDetails({ winner, reason: "resignation" });
+        setGameOverDetails({ winner, reason: 'resignation' });
         setStatus(`You resigned. ${winner} won.`);
         setIsPlaying(false);
+        isPlayingRef.current = false;
         setMenuOpen(false);
         setMobileMenuOpen(false);
+
+        // Close WebRTC and media in all cases
+        cleanupWebRTCAndMedia();
 
         if (playNext) {
             setGameOverDetails(null);
             handlePlay();
         } else {
+            disconnectSocket();
             router.push('/lobby');
         }
     }
@@ -647,7 +719,7 @@ export default function GamePage() {
                             <button
                                 onClick={() => {
                                     setShowQuitConfirm(false);
-                                    router.push('/lobby');
+                                    cleanupAndQuit();
                                 }}
                                 className="w-full px-4 py-3 rounded-xl border dark:border-red-500/30 border-red-400/30 dark:text-red-400 text-red-500 font-semibold text-sm dark:hover:bg-red-500/10 hover:bg-red-50 transition-colors"
                             >
@@ -678,7 +750,7 @@ export default function GamePage() {
                                 Resign & Play Next
                             </button>
                             <button
-                                onClick={() => setMenuOpen(false)}
+                                onClick={() => { setMenuOpen(false); setMobileMenuOpen(false); }}
                                 className="w-full px-4 py-3 border dark:border-white/10 border-black/10 rounded-xl text-neutral-400 hover:text-white dark:hover:bg-white/5 hover:bg-black/5 transition-colors text-sm font-medium mt-2"
                             >
                                 Cancel
