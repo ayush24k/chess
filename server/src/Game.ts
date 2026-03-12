@@ -140,7 +140,8 @@ export class Game {
 
     public makeMove(socket: WebSocket, move: {
         from: string,
-        to: string
+        to: string,
+        promotion?: string
     }) {
         if (this.gameOver) return;
 
@@ -180,7 +181,7 @@ export class Game {
         this.lastMoveTime = now;
 
         try {
-            this.board.move(move);
+            this.board.move({ from: move.from, to: move.to, promotion: move.promotion as any });
         } catch (err) {
             console.log("invalid move", err);
             // Refund the time deducted since the move was invalid

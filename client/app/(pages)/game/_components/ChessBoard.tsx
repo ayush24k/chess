@@ -48,8 +48,19 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
     const [shakeSquare, setShakeSquare] = useState<Square | null>(null);
     const [drag, setDrag] = useState<DragState | null>(null);
     const [hoverSquare, setHoverSquare] = useState<Square | null>(null);
+    const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
     const boardRef = useRef<HTMLDivElement>(null);
     const isDraggingRef = useRef(false);
+
+    // Check if a move is a pawn promotion
+    const isPromotionMove = useCallback((fromSq: Square, toSq: Square): boolean => {
+        const piece = chess.get(fromSq);
+        if (!piece || piece.type !== 'p') return false;
+        const toRank = toSq[1];
+        if (piece.color === 'w' && toRank === '8') return true;
+        if (piece.color === 'b' && toRank === '1') return true;
+        return false;
+    }, [chess]);
 
     // When "from" changes, compute legal moves
     useEffect(() => {
@@ -66,7 +77,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
     }, [from, chess]);
 
     // Execute a move (shared between click and drag)
-    const executeMove = useCallback((fromSq: Square, toSq: Square) => {
+    const executeMove = useCallback((fromSq: Square, toSq: Square, promotion?: PieceSymbol) => {
         const fromCoords = squareToCoords(fromSq);
         const toCoords = squareToCoords(toSq);
         const piece = chess.get(fromSq);
@@ -75,13 +86,20 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
             return false;
         }
 
+        // If this is a promotion move and no piece was chosen yet, show the picker
+        if (isPromotionMove(fromSq, toSq) && !promotion) {
+            setPendingPromotion({ from: fromSq, to: toSq });
+            setFrom(null);
+            return true; // not a failure — waiting for selection
+        }
+
         const visualFromRow = playerColor === 'black' ? 7 - fromCoords.row : fromCoords.row;
         const visualFromCol = playerColor === 'black' ? 7 - fromCoords.col : fromCoords.col;
         const visualToRow = playerColor === 'black' ? 7 - toCoords.row : toCoords.row;
         const visualToCol = playerColor === 'black' ? 7 - toCoords.col : toCoords.col;
 
         try {
-            chess.move({ from: fromSq, to: toSq });
+            chess.move({ from: fromSq, to: toSq, promotion });
 
             // Get the last move notation from history
             const history = chess.history();
@@ -98,7 +116,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
 
             socket?.send(JSON.stringify({
                 type: MOVE,
-                payload: { move: { from: fromSq, to: toSq } }
+                payload: { move: { from: fromSq, to: toSq, promotion } }
             }));
 
             setTimeout(() => {
@@ -120,7 +138,7 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
             setFrom(null);
             return false;
         }
-    }, [chess, playerColor, socket, setBoard, onMove]);
+    }, [chess, playerColor, socket, setBoard, onMove, isPromotionMove]);
 
     // Click handler
     const handleSquareClick = useCallback((squareRepresentation: Square, square: { type: PieceSymbol; color: Color } | null) => {
@@ -245,6 +263,17 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
             isDraggingRef.current = false;
         }
     }, [drag, getSquareFromPoint, executeMove]);
+
+    // Handle promotion piece selection
+    const handlePromotionSelect = useCallback((piece: PieceSymbol) => {
+        if (!pendingPromotion) return;
+        executeMove(pendingPromotion.from, pendingPromotion.to, piece);
+        setPendingPromotion(null);
+    }, [pendingPromotion, executeMove]);
+
+    const cancelPromotion = useCallback(() => {
+        setPendingPromotion(null);
+    }, []);
 
     // Compute drag ghost position
     const dragGhostStyle = drag && isDraggingRef.current ? (() => {
@@ -391,6 +420,52 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                     </div>
                 )
             })}
+
+            {/* Pawn Promotion Picker */}
+            {pendingPromotion && (() => {
+                const myColor = playerColor === 'white' ? 'w' : 'b';
+                const toCoords = squareToCoords(pendingPromotion.to);
+                const visualCol = playerColor === 'black' ? 7 - toCoords.col : toCoords.col;
+                // Show picker from the promotion rank, expanding downward for white, upward for black
+                const isWhite = playerColor === 'white';
+                const visualStartRow = isWhite ? 0 : 4;
+                const promotionPieces: PieceSymbol[] = ['q', 'r', 'b', 'n'];
+
+                return (
+                    <>
+                        {/* Backdrop to cancel */}
+                        <div
+                            className="absolute inset-0 z-40 bg-black/30"
+                            onClick={cancelPromotion}
+                        />
+                        {/* Piece options */}
+                        <div
+                            className="absolute z-50 flex flex-col shadow-xl rounded overflow-hidden"
+                            style={{
+                                left: `${(visualCol * 100) / 8}%`,
+                                top: `${(visualStartRow * 100) / 8}%`,
+                                width: `${100 / 8}%`,
+                            }}
+                        >
+                            {promotionPieces.map((p) => (
+                                <button
+                                    key={p}
+                                    className="aspect-square flex items-center justify-center bg-white hover:bg-amber-200 transition-colors border-b border-gray-200 last:border-b-0"
+                                    onClick={() => handlePromotionSelect(p)}
+                                >
+                                    <Image
+                                        className="w-[75%] h-[75%] object-contain"
+                                        alt={p}
+                                        width={48}
+                                        height={48}
+                                        src={`/chessPieces/${myColor === 'b' ? `${p}.png` : `${p.toUpperCase()}-white.png`}`}
+                                    />
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                );
+            })()}
         </div>
     )
 }

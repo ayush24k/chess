@@ -447,7 +447,7 @@ export default function GamePage() {
                 }
                 case MOVE: {
                     const move = message.payload;
-                    chess.move({ from: move.from, to: move.to });
+                    chess.move({ from: move.from, to: move.to, promotion: move.promotion });
                     setBoard(chess.board());
                     setMoveHistory(chess.history());
                     setActiveColor(chess.turn() === 'w' ? 'white' : 'black');

@@ -81,7 +81,8 @@ export class GameManager {
 
     private handleMove(socket: WebSocket, move: {
         from: string,
-        to: string
+        to: string,
+        promotion?: string
     }) {
         // find the running game using player socket
         console.log(move)
