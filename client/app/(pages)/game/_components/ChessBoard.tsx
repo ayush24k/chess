@@ -426,10 +426,13 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                 const myColor = playerColor === 'white' ? 'w' : 'b';
                 const toCoords = squareToCoords(pendingPromotion.to);
                 const visualCol = playerColor === 'black' ? 7 - toCoords.col : toCoords.col;
-                // Show picker from the promotion rank, expanding downward for white, upward for black
-                const isWhite = playerColor === 'white';
-                const visualStartRow = isWhite ? 0 : 4;
+                const visualRow = playerColor === 'black' ? 7 - toCoords.row : toCoords.row;
                 const promotionPieces: PieceSymbol[] = ['q', 'r', 'b', 'n'];
+
+                // Clamp horizontal position so the picker doesn't overflow the board
+                // Each piece takes 12.5% width, 4 pieces = 50%
+                const rawLeft = (visualCol * 100) / 8 - (50 - 12.5) / 2; // center on the target square
+                const clampedLeft = Math.max(0, Math.min(rawLeft, 50));
 
                 return (
                     <>
@@ -438,19 +441,19 @@ export default function ChessBoard({ board, socket, setBoard, chess, playerColor
                             className="absolute inset-0 z-40 bg-black/30"
                             onClick={cancelPromotion}
                         />
-                        {/* Piece options */}
+                        {/* Piece options — horizontal row at the promotion rank */}
                         <div
-                            className="absolute z-50 flex flex-col shadow-xl rounded overflow-hidden"
+                            className="absolute z-50 flex flex-row shadow-xl rounded overflow-hidden"
                             style={{
-                                left: `${(visualCol * 100) / 8}%`,
-                                top: `${(visualStartRow * 100) / 8}%`,
-                                width: `${100 / 8}%`,
+                                left: `${clampedLeft}%`,
+                                top: `${(visualRow * 100) / 8}%`,
+                                height: `${100 / 8}%`,
                             }}
                         >
                             {promotionPieces.map((p) => (
                                 <button
                                     key={p}
-                                    className="aspect-square flex items-center justify-center bg-white hover:bg-amber-200 transition-colors border-b border-gray-200 last:border-b-0"
+                                    className="aspect-square h-full flex items-center justify-center bg-white hover:bg-amber-200 transition-colors border-r border-gray-200 last:border-r-0"
                                     onClick={() => handlePromotionSelect(p)}
                                 >
                                     <Image
