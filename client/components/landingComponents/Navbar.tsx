@@ -13,7 +13,7 @@ export default function Navbar() {
                         alt="Checkmate Logo" 
                         width={120} 
                         height={120} 
-                        className="w-14 h-14 object-contain"
+                        className="w-12 h-12 object-contain"
                     />
                     CheckMate
                 </div>
