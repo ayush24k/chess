@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { IconBrandGithub, IconBrandTwitter, IconBrandDiscord } from "@tabler/icons-react";
+import Image from "next/image";
 
 export default function Footer() {
     return (
@@ -8,9 +9,18 @@ export default function Footer() {
 
                 {/* Logo and Copyright */}
                 <div className="flex flex-col items-center md:items-start gap-2">
-                    <span className="font-bold text-2xl dark:text-white">Chess</span>
+                    <div className="font-bold text-2xl dark:text-white flex items-center gap-1">
+                        <Image 
+                            src="/chessMedia/checkmateLogo.png" 
+                            alt="Checkmate Logo" 
+                            width={100} 
+                            height={100} 
+                            className="w-14 h-24 object-contain"
+                        />
+                        CheckMate
+                    </div>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                        © {new Date().getFullYear()} Chess. All rights reserved.
+                        © {new Date().getFullYear()} CheckMate. All rights reserved.
                     </p>
                 </div>
 

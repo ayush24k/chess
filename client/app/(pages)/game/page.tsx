@@ -2,12 +2,14 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSocketContext } from "@/app/contexts/SocketContext";
 import Button from "./_components/Button";
 import ChessBoard from "./_components/ChessBoard";
 import { Chess } from 'chess.js'
 import { GAME_OVER, INIT_GAME, MOVE, CHAT, TIME_UPDATE, WEBRTC_ICE, WEBRTC_OFFER, WEBRTC_ANSWER, PLAYER_QUIT, PLAY_AGAIN_REQUEST, PLAY_AGAIN_RESPONSE, PLAY_AGAIN_CANCELLED } from "../../messages/messages";
 import { IconVideo, IconSend, IconUser, IconMessageCircle, IconX, IconHistory, IconSwords, IconArrowLeft, IconAlertTriangle, IconDotsVertical, IconChess } from "@tabler/icons-react";
+import Image from "next/image";
 
 type UserProfile = {
     id: string;
@@ -921,7 +923,13 @@ export default function GamePage() {
                             <div className="absolute inset-0 rounded-full border-4 border-green-500/20" />
                             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin" />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <IconChess className="w-8 h-8 text-green-500" />
+                                <Image 
+                                    src="/chessMedia/checkmateLogo.png" 
+                                    alt="Checkmate Logo" 
+                                    width={120} 
+                                    height={120} 
+                                    className="w-16 h-16 object-contain"
+                                />
                             </div>
                         </div>
                         <div>
@@ -1011,7 +1019,16 @@ export default function GamePage() {
 
                 {/* ===== Navbar ===== */}
                 <nav className="flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 dark:bg-neutral-900/80 bg-white/80 backdrop-blur-md border-b dark:border-white/10 border-black/10 z-30 shrink-0">
-                    <span className="font-bold text-base sm:text-lg tracking-tight dark:text-white text-neutral-900">Chess</span>
+                    <Link href="/lobby" className="flex items-center gap-1">
+                        <Image 
+                            src="/chessMedia/checkmateLogo.png" 
+                            alt="Checkmate Logo" 
+                            width={120} 
+                            height={120} 
+                            className="w-14 h-14 object-contain"
+                        />
+                        <span className="font-bold text-lg sm:text-2xl tracking-tight dark:text-white text-neutral-900">CheckMate</span>
+                    </Link>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
                             {session?.user?.image ? (

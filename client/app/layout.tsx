@@ -11,8 +11,8 @@ const manrope = Manrope({
 
 
 export const metadata: Metadata = {
-  title: "Chess",
-  description: "Chess game with 1v1 video chat",
+  title: "CheckMate",
+  description: "CheckMate - Chess game with 1v1 video chat",
 };
 
 export default function RootLayout({

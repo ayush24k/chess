@@ -23,6 +23,7 @@ import {
     IconHome,
     IconUsers,
 } from "@tabler/icons-react"
+import Image from "next/image"
 import { useToast } from "@/components/ui/Toast"
 import PlayersOnline from "@/components/landingComponents/PlayersOnline"
 import { useSocketContext } from "@/app/contexts/SocketContext"
@@ -162,7 +163,7 @@ export default function LobbyPage() {
 
     return (
         <div
-            className="relative h-[100dvh] overflow-hidden dark:bg-black bg-neutral-200"
+            className="relative h-[100dvh] flex flex-col overflow-hidden dark:bg-black bg-neutral-200"
             style={{
                 backgroundImage: `radial-gradient(circle at 0.5px 0.5px, rgba(255,255,255,0.1) 0.9px, transparent 0)`,
                 backgroundSize: "8px 8px",
@@ -170,19 +171,38 @@ export default function LobbyPage() {
             }}
         >
             {/* ===== Navbar ===== */}
-            <nav className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 dark:bg-neutral-900/80 bg-white/80 backdrop-blur-md border-b dark:border-white/10 border-black/10 z-40 relative">
-                {/* Left: hamburger + logo */}
-                <div className="flex items-center gap-3">
+            <nav className="shrink-0 relative flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 dark:bg-neutral-900/80 bg-white/80 backdrop-blur-md border-b dark:border-white/10 border-black/10 z-40">
+                {/* Left: hamburger (mobile only) */}
+                <div className="flex items-center">
                     <button
                         onClick={() => setSidebarOpen(!sidebarOpen)}
                         className="lg:hidden p-1.5 rounded-lg dark:hover:bg-white/10 hover:bg-black/5 transition-colors"
                     >
                         <IconMenu2 className="w-5 h-5 dark:text-neutral-300 text-neutral-700" />
                     </button>
-                    <div className="flex items-center gap-2">
-                        <IconChess className="w-6 h-6 text-green-500" />
-                        <span className="font-bold text-base sm:text-lg tracking-tight dark:text-white text-neutral-900">Chess</span>
+                    {/* Desktop: logo shown in left */}
+                    <div className="hidden lg:flex font-bold md:text-2xl text-xl items-center gap-1">
+                        <Image
+                            src="/chessMedia/checkmateLogo.png"
+                            alt="Checkmate Logo"
+                            width={120}
+                            height={120}
+                            className="w-14 h-14 object-contain"
+                        />
+                        CheckMate
                     </div>
+                </div>
+
+                {/* Center: logo on mobile/tablet only */}
+                <div className="absolute left-1/2 -translate-x-1/2 lg:hidden font-bold text-xl flex items-center gap-1">
+                    <Image
+                        src="/chessMedia/checkmateLogo.png"
+                        alt="Checkmate Logo"
+                        width={120}
+                        height={120}
+                        className="w-10 h-10 object-contain"
+                    />
+                    CheckMate
                 </div>
 
                 {/* Right: auth area */}
@@ -265,7 +285,7 @@ export default function LobbyPage() {
             </nav>
 
             {/* ===== Main Area ===== */}
-            <div className="flex h-[calc(100dvh-53px)]">
+            <div className="flex flex-1 overflow-hidden">
 
                 {/* ── Sidebar (desktop: always visible, mobile: overlay) ── */}
                 {/* Mobile overlay backdrop */}
@@ -278,17 +298,26 @@ export default function LobbyPage() {
 
                 <aside className={`
                     fixed lg:static top-0 left-0 z-50 lg:z-auto
-                    h-full w-64 lg:w-56 xl:w-64
+                    h-[100dvh] lg:h-full w-64 lg:w-56 xl:w-64
                     dark:bg-neutral-900/95 bg-white/95 lg:dark:bg-neutral-900/80 lg:bg-neutral-100/80
                     backdrop-blur-md border-r dark:border-white/5 border-black/5
-                    flex flex-col
+                    flex flex-col min-h-0 overflow-hidden
                     transition-transform duration-300 ease-in-out
                     ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
                 `}>
-                    {/* Mobile close button */}
-                    <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b dark:border-white/5 border-black/5">
-                        <span className="font-bold dark:text-white text-neutral-900">Menu</span>
-                        <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg dark:hover:bg-white/10 hover:bg-black/5">
+                    {/* Mobile burger menu header */}
+                    <div className="lg:hidden relative flex items-center justify-center px-4 py-3 border-b dark:border-white/5 border-black/5">
+                        <div className="flex items-center gap-1">
+                            <Image
+                                src="/chessMedia/checkmateLogo.png"
+                                alt="Checkmate Logo"
+                                width={120}
+                                height={120}
+                                className="w-10 h-10 object-contain"
+                            />
+                            <span className="font-bold text-lg dark:text-white text-neutral-900">CheckMate</span>
+                        </div>
+                        <button onClick={() => setSidebarOpen(false)} className="absolute right-3 p-1 rounded-lg dark:hover:bg-white/10 hover:bg-black/5">
                             <IconX className="w-5 h-5 dark:text-neutral-400 text-neutral-500" />
                         </button>
                     </div>
@@ -565,7 +594,13 @@ export default function LobbyPage() {
                             <div className="absolute inset-0 rounded-full border-4 border-green-500/20" />
                             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin" />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <IconChess className="w-8 h-8 text-green-500" />
+                                <Image
+                                    src="/chessMedia/checkmateLogo.png"
+                                    alt="Checkmate Logo"
+                                    width={120}
+                                    height={120}
+                                    className="w-16 h-16 object-contain"
+                                />
                             </div>
                         </div>
                         <div>
