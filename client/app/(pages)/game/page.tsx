@@ -923,11 +923,11 @@ export default function GamePage() {
                             <div className="absolute inset-0 rounded-full border-4 border-green-500/20" />
                             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-green-500 animate-spin" />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <Image 
-                                    src="/chessMedia/checkmateLogo.png" 
-                                    alt="Checkmate Logo" 
-                                    width={120} 
-                                    height={120} 
+                                <Image
+                                    src="/chessMedia/checkmateLogo.png"
+                                    alt="Checkmate Logo"
+                                    width={120}
+                                    height={120}
                                     className="w-16 h-16 object-contain"
                                 />
                             </div>
@@ -1020,11 +1020,11 @@ export default function GamePage() {
                 {/* ===== Navbar ===== */}
                 <nav className="flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3 dark:bg-neutral-900/80 bg-white/80 backdrop-blur-md border-b dark:border-white/10 border-black/10 z-30 shrink-0">
                     <Link href="/lobby" className="flex items-center gap-1">
-                        <Image 
-                            src="/chessMedia/checkmateLogo.png" 
-                            alt="Checkmate Logo" 
-                            width={120} 
-                            height={120} 
+                        <Image
+                            src="/chessMedia/checkmateLogo.png"
+                            alt="Checkmate Logo"
+                            width={120}
+                            height={120}
                             className="w-14 h-14 object-contain"
                         />
                         <span className="font-bold text-lg sm:text-2xl tracking-tight dark:text-white text-neutral-900">CheckMate</span>
@@ -1062,7 +1062,7 @@ export default function GamePage() {
                 <div className="flex-1 dark:bg-neutral-900/60 bg-white/60 backdrop-blur-sm overflow-hidden flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_minmax(0,1fr)] relative">
 
                     {/* ─── Left Panel: Video & Game History (Desktop only) ─── */}
-                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-r dark:border-white/5 border-black/5">
+                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-r dark:border-white/5 border-black/5 min-h-0">
                         {/* Opponent video */}
                         <div className="w-full aspect-video rounded-lg dark:bg-neutral-800 bg-neutral-200 relative overflow-hidden">
                             {!isPlaying && (
@@ -1098,7 +1098,7 @@ export default function GamePage() {
                                 </div>
                                 <span className="text-[9px] dark:text-neutral-600 text-neutral-400">{moveHistory.length}</span>
                             </div>
-                            <div className="flex-1 p-2 overflow-y-auto min-h-0">
+                            <div className="flex-1 p-2 overflow-y-auto min-h-0 custom-scrollbar">
                                 {movePairs.length === 0 ? (
                                     <div className="px-2 py-1 dark:bg-white/5 bg-black/5 rounded-md dark:text-neutral-500 text-neutral-400 italic text-[10px]">
                                         Waiting for moves...
@@ -1251,14 +1251,14 @@ export default function GamePage() {
                     </div>
 
                     {/* ─── Right Panel: Chat (Desktop only) ─── */}
-                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-l dark:border-white/5 border-black/5">
+                    <div className="hidden lg:flex flex-col gap-3 p-4 dark:bg-neutral-900/80 bg-neutral-100/80 border-l dark:border-white/5 border-black/5 min-h-0">
                         {/* Chat area */}
                         <div className="flex-1 rounded-lg dark:bg-neutral-800/60 bg-neutral-200/60 p-2.5 flex flex-col overflow-hidden min-h-0">
                             <div className="flex items-center gap-1 mb-1.5">
                                 <IconMessageCircle className="w-3 h-3 dark:text-neutral-500 text-neutral-400" />
                                 <span className="text-[9px] font-semibold uppercase tracking-wider dark:text-neutral-500 text-neutral-400">Chat</span>
                             </div>
-                            <div className="flex-1 flex flex-col gap-1.5 text-[11px] overflow-y-auto min-h-0">
+                            <div className="flex-1 flex flex-col gap-1.5 text-[11px] overflow-y-auto min-h-0 custom-scrollbar">
                                 {!isPlaying && chatMessages.length === 0 ? (
                                     <div className="flex-1 flex items-center justify-center">
                                         <p className="dark:text-neutral-500 text-neutral-400 text-[10px]">Waiting for match...</p>
@@ -1353,7 +1353,7 @@ export default function GamePage() {
                             <IconX className="w-5 h-5 text-neutral-400" />
                         </button>
                     </div>
-                    <div className="flex-1 p-3 flex flex-col gap-2 text-sm overflow-y-auto min-h-0">
+                    <div className="flex-1 p-3 flex flex-col gap-2 text-sm overflow-y-auto min-h-0 custom-scrollbar-dark">
                         {!isPlaying && chatMessages.length === 0 ? (
                             <div className="flex-1 flex items-center justify-center text-neutral-500">
                                 <p className="bg-black/40 px-3 py-1.5 rounded-full border border-white/5 text-xs">Waiting for match...</p>
@@ -1403,7 +1403,7 @@ export default function GamePage() {
                             </button>
                         </div>
                     </div>
-                    <div className="flex-1 p-3 overflow-y-auto min-h-0">
+                    <div className="flex-1 p-3 overflow-y-auto min-h-0 custom-scrollbar-dark">
                         {movePairs.length === 0 ? (
                             <div className="flex flex-col gap-2 text-sm text-neutral-400">
                                 <div className="px-2 py-1 bg-white/5 rounded-md text-neutral-500 italic text-xs">

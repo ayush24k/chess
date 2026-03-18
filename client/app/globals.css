@@ -34,11 +34,13 @@ body {
 .game-board-inner {
   max-width: min(480px, calc((100dvh - 140px) / 1.28));
 }
+
 @media (min-width: 640px) and (max-width: 1023px) {
   .game-board-inner {
     max-width: min(540px, calc((100dvh - 220px) / 1.28));
   }
 }
+
 @media (min-width: 1024px) {
   .game-board-inner {
     max-width: 520px;
@@ -55,46 +57,118 @@ body {
   justify-content: flex-end;
   transition: opacity 0.25s ease, visibility 0.25s ease;
 }
+
 .bottom-sheet.closed {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
+
 .bottom-sheet.open {
   opacity: 1;
   visibility: visible;
 }
+
 .bottom-sheet .bottom-sheet-panel {
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
+
 .bottom-sheet.open .bottom-sheet-panel {
   transform: translateY(0);
 }
+
 @media (min-width: 1024px) {
-  .bottom-sheet { display: none; }
+  .bottom-sheet {
+    display: none;
+  }
 }
 
 /* Chess piece shake animation for invalid moves */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-4px); }
-  40% { transform: translateX(4px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20% {
+    transform: translateX(-4px);
+  }
+
+  40% {
+    transform: translateX(4px);
+  }
+
+  60% {
+    transform: translateX(-3px);
+  }
+
+  80% {
+    transform: translateX(3px);
+  }
 }
+
 .animate-shake {
   animation: shake 0.35s ease-in-out;
 }
 
 /* Infinite scroll marquee for tech stack */
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }
+
 .animate-marquee {
   animation: marquee 30s linear infinite;
 }
+
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Custom scrollbar matching project theme */
+.custom-scrollbar {
+  --scrollbar-thumb: #d4d4d8; /* neutral-300 */
+  --scrollbar-thumb-hover: #a1a1aa; /* neutral-400 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+:where(.dark, .dark *) .custom-scrollbar {
+  --scrollbar-thumb: #52525b; /* neutral-600 */
+  --scrollbar-thumb-hover: #71717a; /* neutral-500 */
+}
+
+.custom-scrollbar-dark {
+  --scrollbar-thumb: #52525b;
+  --scrollbar-thumb-hover: #71717a;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar,
+.custom-scrollbar-dark::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.custom-scrollbar-dark::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.custom-scrollbar-dark::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
